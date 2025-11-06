@@ -1,0 +1,5 @@
+{
+  "name": "TRT Optimization Assistant",
+  "description": "An AI assistant to help analyze lab results and symptoms to optimize testosterone replacement therapy (TRT).",
+  "requestFramePermissions": []
+}

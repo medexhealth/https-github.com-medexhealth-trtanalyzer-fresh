@@ -1,0 +1,9 @@
+{
+  "name": "trt-analyzer-backend-function",
+  "version": "1.0.0",
+  "description": "Dependencies for the Netlify serverless function.",
+  "type": "module",
+  "dependencies": {
+    "@google/genai": "^1.28.0"
+  }
+}
