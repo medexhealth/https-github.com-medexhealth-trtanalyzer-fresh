@@ -55,7 +55,7 @@ const analyzeLabResults = async (formData: FormData): Promise<string> => {
       if (errorData.error) {
         const lowerError = errorData.error.toLowerCase();
         if (lowerError.includes('api key')) {
-          return "Error: There is a configuration problem with the analysis server. Please try again later.";
+          return "Error: The server reported a problem with the API key. Please double-check that the GEMINI_API_KEY is correctly set in your Netlify site settings. Ensure there are no extra spaces or characters copied by mistake.";
         }
         if (lowerError.includes('safety settings')) {
           return "Error: The analysis was blocked by the AI's safety filter. This can happen with medical data. Please adjust your inputs and retry.";
@@ -520,7 +520,9 @@ const App = () => {
                 <header className="text-center mb-8">
                     <div className="flex items-center justify-center gap-3">
                         <SparklesIcon className="w-8 h-8 text-cyan-400" />
-                        <h1 className="text-3xl sm:text-4xl font-bold text-gray-100">TRT Lab Analyzer</h1>
+                        <h1 className="text-3xl sm:text-4xl font-bold text-gray-100">
+                            TRT Lab Analyzer
+                        </h1>
                     </div>
                      <p className="text-gray-400 mt-2">Powered by Dr. T's Expert Methodology</p>
                 </header>

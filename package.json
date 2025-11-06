@@ -1,7 +1,7 @@
 {
-  "name": "trt-analyzer-backend-function",
+  "name": "trt-optimization-assistant-app",
   "version": "1.0.0",
-  "description": "Dependencies for the Netlify serverless function.",
+  "description": "Frontend and backend for the TRT Optimization Assistant.",
   "type": "module",
   "dependencies": {
     "@google/genai": "^1.28.0"

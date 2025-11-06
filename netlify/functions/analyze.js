@@ -100,10 +100,13 @@ export const handler = async (event) => {
 
   } catch (error) {
     console.error("Error in Netlify function:", error);
-    // Provide a more specific error if it's an API communication issue.
-    const errorMessage = error.message && error.message.toLowerCase().includes('api key') 
-      ? 'An API key issue was detected. Please check the server configuration.'
-      : 'An unexpected error occurred while communicating with the AI service.';
+    
+    let errorMessage = 'An unexpected error occurred while communicating with the AI service.';
+    if (error.message && error.message.includes('API key not valid')) {
+        errorMessage = 'The provided API key is not valid. Please check the GEMINI_API_KEY environment variable in Netlify.';
+    } else if (error.message && error.message.toLowerCase().includes('api key')) {
+        errorMessage = 'An API key issue was detected. Please check the server configuration.';
+    }
 
     return {
       statusCode: 500,
