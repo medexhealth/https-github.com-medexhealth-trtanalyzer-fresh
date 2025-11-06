@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 
@@ -114,6 +115,12 @@ const ClipboardIcon = (props: React.SVGProps<SVGSVGElement>) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a2.25 2.25 0 0 1-2.25 2.25h-1.5a2.25 2.25 0 0 1-2.25-2.25v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
     </svg>
 );
+const ArrowPathIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 11.667 0l3.181-3.183m-4.991-2.696v4.992h-4.992m0 0-3.181-3.183a8.25 8.25 0 0 1 11.667 0l3.181 3.183" />
+    </svg>
+);
+
 
 // --- UI COMPONENTS (Re-integrated) ---
 
@@ -142,22 +149,18 @@ const Markdown = ({ content }: { content: string }) => {
     return <div className="space-y-2" dangerouslySetInnerHTML={{ __html: html }} />;
 };
 
-const ResultDisplay = ({ result }: { result: string }) => {
+const ResultDisplay = ({ result, onReset }: { result: string, onReset: () => void }) => {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
         const guideTitle = "### Your Personalized Doctor Discussion Guide";
-        const oldGuideTitle = "### Protocol Considerations & Discussion Points for the Doctor";
         const disclaimerTitle = "### Important Disclaimer";
 
-        let startIndex = result.indexOf(guideTitle);
-        if (startIndex === -1) {
-            startIndex = result.indexOf(oldGuideTitle);
-        }
+        const startIndex = result.indexOf(guideTitle);
         
         if (startIndex === -1) {
             console.error("Could not find the discussion guide section to copy.");
-            // As a fallback, copy the entire text if the guide isn't found
+            // Fallback to copying entire text if guide isn't found
             navigator.clipboard.writeText(result);
             return;
         }
@@ -183,19 +186,29 @@ const ResultDisplay = ({ result }: { result: string }) => {
 
     if (!result) return null;
     return (
-        <div className="bg-gray-900/50 backdrop-blur-xl p-6 rounded-lg shadow-2xl animate-fade-in border border-cyan-500/20">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-cyan-400">Analysis Report</h2>
-                <button 
-                    onClick={handleCopy}
-                    className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-800/70 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 hover:text-cyan-200 rounded-lg transition-all duration-200 disabled:opacity-50"
-                    disabled={copied}
-                >
-                    {copied ? <> <CheckIcon className="w-4 h-4 text-green-400" /> Copied!</> : <> <ClipboardIcon className="w-4 h-4" /> Copy Discussion Guide</>}
-                </button>
+        <div className="animate-fade-in">
+            <div className="bg-gray-900/50 backdrop-blur-xl p-6 rounded-lg shadow-2xl border border-cyan-500/20">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold text-cyan-400">Analysis Report</h2>
+                    <button 
+                        onClick={handleCopy}
+                        className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-800/70 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 hover:text-cyan-200 rounded-lg transition-all duration-200 disabled:opacity-50"
+                        disabled={copied}
+                    >
+                        {copied ? <> <CheckIcon className="w-4 h-4 text-green-400" /> Copied!</> : <> <ClipboardIcon className="w-4 h-4" /> Copy Discussion Guide</>}
+                    </button>
+                </div>
+                <div className="prose prose-invert max-w-none text-gray-300 leading-relaxed space-y-4">
+                    <Markdown content={result} />
+                </div>
             </div>
-            <div className="prose prose-invert max-w-none text-gray-300 leading-relaxed space-y-4">
-                <Markdown content={result} />
+            <div className="mt-6 text-center">
+                <button 
+                    onClick={onReset}
+                    className="flex items-center justify-center w-full sm:w-auto mx-auto gap-2 px-6 py-3 bg-gray-700/50 border border-gray-600 text-gray-300 hover:bg-gray-600/50 hover:text-white rounded-lg transition-colors duration-200"
+                >
+                    <ArrowPathIcon className="w-5 h-5" /> Start New Analysis
+                </button>
             </div>
         </div>
     );
@@ -265,7 +278,6 @@ const App = () => {
     const [appState, setAppState] = useState<AppState>('INTRO');
     const [currentStep, setCurrentStep] = useState(1);
     const [analysisSession, setAnalysisSession] = useState<any>(null);
-    const [confirmationUrl, setConfirmationUrl] = useState('');
     
     const [formData, setFormData] = useState<FormData>({
         injectionFrequency: '',
@@ -289,11 +301,22 @@ const App = () => {
     const PAYMENT_URL = 'https://buy.stripe.com/5kQeVe2rT6gD9etfqx2Fa01';
 
     const endSessionAndReset = useCallback(() => {
-        trackEvent('session_reset');
         localStorage.removeItem('analysisSession');
         setAnalysisSession(null);
         window.location.reload();
     }, []);
+
+    const handleResetWithConfirmation = () => {
+        const userConfirmed = window.confirm(
+            "Are you sure you want to start a new analysis? Your current report will be cleared from this browser session."
+        );
+        if (userConfirmed) {
+            trackEvent('session_reset_confirmed');
+            endSessionAndReset();
+        } else {
+            trackEvent('session_reset_cancelled');
+        }
+    };
 
     const processAnalysisResult = useCallback((result: string, dataToAnalyze: FormData, currentSession: any) => {
         if (result && result.toLowerCase().startsWith('error:')) {
@@ -398,32 +421,6 @@ const App = () => {
     const handleTimingChange = (e: React.ChangeEvent<HTMLSelectElement>) => setFormData(prev => ({ ...prev, bloodTestTiming: e.target.value }));
     const handleSymptomChange = (symptoms: string[]) => setFormData(prev => ({ ...prev, symptoms }));
     
-    const handleFinalizeAndAnalyze = () => {
-        const url = confirmationUrl.trim();
-        if (!url) {
-            setError("Please paste the confirmation URL from Stripe to verify your purchase.");
-            return;
-        }
-        
-        const match = url.match(/(cs_(live|test)_[a-zA-Z0-9]+)/);
-        const potentialSessionId = match ? match[0] : null;
-
-        if (potentialSessionId && analysisSession) {
-            setError('');
-            trackEvent('purchase_verified_manually');
-            const updatedSession = { ...analysisSession, paymentConfirmed: true };
-            localStorage.setItem('analysisSession', JSON.stringify(updatedSession));
-            setAnalysisSession(updatedSession);
-            runAnalysis(formData, updatedSession);
-        } else {
-            let errorMsg = "Could not find a valid Stripe Session ID in the URL. Please ensure you copied the entire address from the Stripe confirmation page.";
-            if (!analysisSession) {
-                errorMsg += " Your session may have also expired. Please start over."
-            }
-            setError(errorMsg);
-        }
-    };
-
     const handleAttemptAnalysis = () => {
         if (!formData.labs.freeTestosterone || !formData.labs.estradiol || !formData.labs.hematocrit) {
             setError('Please fill in at least Free T, Estradiol, and Hematocrit values.');
@@ -432,201 +429,175 @@ const App = () => {
         setError('');
         trackEvent('analysis_attempt');
         
-        let sessionToUse = analysisSession;
-        if (!sessionToUse || sessionToUse.expiry < Date.now()) {
-            const newSession = {
-                token: crypto.randomUUID(),
-                expiry: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-                formData: formData,
-            };
-            setAnalysisSession(newSession);
-            localStorage.setItem('analysisSession', JSON.stringify(newSession));
-            sessionToUse = newSession;
-        } else {
-            const updatedSession = { ...sessionToUse, formData: formData };
-            setAnalysisSession(updatedSession);
-            localStorage.setItem('analysisSession', JSON.stringify(updatedSession));
-            sessionToUse = updatedSession;
-        }
-        
-        if (sessionToUse.paymentConfirmed) {
-            runAnalysis(formData, sessionToUse);
-        } else {
-            setAppState('AWAITING_PAYMENT');
-        }
+        const newSession = {
+            token: crypto.randomUUID(),
+            expiry: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+            paymentConfirmed: false,
+            formData: formData,
+        };
+        setAnalysisSession(newSession);
+        localStorage.setItem('analysisSession', JSON.stringify(newSession));
+        setAppState('AWAITING_PAYMENT');
     };
 
-    const renderStepContent = () => {
-        switch (currentStep) {
-            case 1: return (
-                <div>
-                    <h2 className="text-2xl font-bold text-center text-gray-100 mb-6">Your Protocol</h2>
-                    <div className="space-y-6">
-                        <div>
-                            <label htmlFor="injectionFrequency" className="block text-sm font-medium text-gray-400 mb-2">How often do you inject testosterone?</label>
-                            <select id="injectionFrequency" value={formData.injectionFrequency} onChange={handleFrequencyChange} className="w-full bg-gray-900/50 border-gray-700 text-white rounded-lg p-3 focus:ring-cyan-500 focus:border-cyan-500 transition border">
-                                <option value="">Select frequency...</option>
-                                {Object.values(InjectionFrequency).map(freq => <option key={freq} value={freq}>{freq}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="bloodTestTiming" className="block text-sm font-medium text-gray-400 mb-2">When was this blood test taken relative to your injection?</label>
-                            <select id="bloodTestTiming" value={formData.bloodTestTiming} onChange={handleTimingChange} className="w-full bg-gray-900/50 border-gray-700 text-white rounded-lg p-3 focus:ring-cyan-500 focus:border-cyan-500 transition border">
-                                <option value="">Select timing...</option>
-                                {Object.values(BloodTestTiming).map(time => <option key={time} value={time}>{time}</option>)}
-                            </select>
+    const renderContent = () => {
+        switch (appState) {
+            case 'INTRO':
+                return (
+                    <div className="text-center animate-fade-in">
+                        <h1 className="text-4xl sm:text-5xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-blue-500 mb-2">TRT Optimization Assistant v1.1</h1>
+                        <p className="text-lg text-gray-400 max-w-2xl mx-auto">Get an AI-powered analysis of your TRT lab results, based on the clinical experience of a TRT expert.</p>
+                        <p className="text-sm text-gray-500 max-w-2xl mx-auto mt-2 mb-8">This tool provides an informational analysis to help you prepare for a discussion with your doctor. It is not medical advice.</p>
+                        <button onClick={() => { setAppState('FORM'); trackEvent('start_analysis_clicked'); }} className="group relative inline-flex items-center justify-center px-8 py-3 text-lg font-bold text-white bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-lg shadow-lg hover:shadow-cyan-500/50 transition-shadow duration-300">
+                            <SparklesIcon className="w-6 h-6 mr-3 transform transition-transform duration-300 group-hover:rotate-12" />
+                            Start Free Analysis
+                        </button>
+                    </div>
+                );
+            case 'FORM':
+                return (
+                    <div className="w-full max-w-2xl mx-auto animate-fade-in">
+                        <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
+                        <div className="bg-gray-900/50 backdrop-blur-xl p-6 sm:p-8 rounded-lg shadow-2xl border border-cyan-500/20">
+                            {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm">{error}</div>}
+                            
+                            {currentStep === 1 && (
+                                <div className="animate-slide-up">
+                                    <h2 className="text-2xl font-bold text-cyan-400 mb-1">Your Protocol</h2>
+                                    <p className="text-gray-400 mb-6">Tell us about your current TRT regimen.</p>
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label htmlFor="injectionFrequency" className="block text-sm font-medium text-gray-300 mb-2">How often do you inject Testosterone?</label>
+                                            <select id="injectionFrequency" name="injectionFrequency" value={formData.injectionFrequency} onChange={handleFrequencyChange} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
+                                                <option value="">Select frequency...</option>
+                                                {Object.values(InjectionFrequency).map(freq => <option key={freq} value={freq}>{freq}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label htmlFor="bloodTestTiming" className="block text-sm font-medium text-gray-300 mb-2">When was this blood test taken relative to your injection?</label>
+                                            <select id="bloodTestTiming" name="bloodTestTiming" value={formData.bloodTestTiming} onChange={handleTimingChange} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
+                                                <option value="">Select timing...</option>
+                                                {Object.values(BloodTestTiming).map(time => <option key={time} value={time}>{time}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {currentStep === 2 && (
+                                <div className="animate-slide-up">
+                                    <h2 className="text-2xl font-bold text-cyan-400 mb-1">Your Lab Results</h2>
+                                    <p className="text-gray-400 mb-6">Enter your most recent bloodwork values.</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
+                                        <div>
+                                            <label htmlFor="totalTestosterone" className="block text-sm font-medium text-gray-300 mb-2">Total T <span className="text-gray-500">(ng/dL)</span></label>
+                                            <input type="number" min="0" name="totalTestosterone" id="totalTestosterone" value={formData.labs.totalTestosterone} onChange={handleLabChange} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" placeholder="e.g., 850" />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="freeTestosterone" className="block text-sm font-medium text-gray-300 mb-2">Free T <span className="text-gray-500">(pg/mL) - Required</span></label>
+                                            <input type="number" min="0" name="freeTestosterone" id="freeTestosterone" value={formData.labs.freeTestosterone} onChange={handleLabChange} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" placeholder="e.g., 25.5" required />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="estradiol" className="block text-sm font-medium text-gray-300 mb-2">Estradiol <span className="text-gray-500">(pg/mL) - Required</span></label>
+                                            <input type="number" min="0" name="estradiol" id="estradiol" value={formData.labs.estradiol} onChange={handleLabChange} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" placeholder="e.g., 35" required />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="hematocrit" className="block text-sm font-medium text-gray-300 mb-2">Hematocrit <span className="text-gray-500">(%) - Required</span></label>
+                                            <input type="number" min="0" name="hematocrit" id="hematocrit" value={formData.labs.hematocrit} onChange={handleLabChange} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" placeholder="e.g., 48.5" required />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {currentStep === 3 && (
+                                <div className="animate-slide-up">
+                                    <h2 className="text-2xl font-bold text-cyan-400 mb-1">Your Symptoms</h2>
+                                    <p className="text-gray-400 mb-6">Select any symptoms you're currently experiencing.</p>
+                                    <SymptomsSelector selectedSymptoms={formData.symptoms} onChange={handleSymptomChange} />
+                                </div>
+                            )}
+
+                            <div className="flex justify-between mt-8">
+                                <button onClick={handleBack} disabled={currentStep === 1} className="flex items-center gap-2 px-6 py-2 bg-gray-700/50 border border-gray-600 text-gray-300 hover:bg-gray-600/50 hover:text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <ChevronLeftIcon className="w-4 h-4" /> Back
+                                </button>
+                                {currentStep < TOTAL_STEPS ? (
+                                    <button onClick={handleNext} className="flex items-center gap-2 px-6 py-2 bg-cyan-600/80 text-white hover:bg-cyan-600 rounded-lg transition-colors duration-200">
+                                        Next <ChevronRightIcon className="w-4 h-4" />
+                                    </button>
+                                ) : (
+                                    <button onClick={handleAttemptAnalysis} className="flex items-center gap-2 px-6 py-2 bg-green-600/80 text-white hover:bg-green-600 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-green-500/40">
+                                        <SparklesIcon className="w-5 h-5" /> Get My Analysis
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            );
-            case 2: return (
-                <div>
-                    <h2 className="text-2xl font-bold text-center text-gray-100 mb-6">Your Lab Results</h2>
-                    <p className="text-center text-gray-400 mb-6 text-sm">Enter the values exactly as they appear on your report. The AI is trained to handle various units.</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
-                        <div>
-                            <label htmlFor="totalTestosterone" className="block text-sm font-medium text-gray-400 mb-2">Total Testosterone (Optional)</label>
-                            <input type="text" pattern="[0-9]*" name="totalTestosterone" id="totalTestosterone" value={formData.labs.totalTestosterone} onChange={handleLabChange} className="w-full bg-gray-900/50 border-gray-700 text-white rounded-lg p-3 focus:ring-cyan-500 focus:border-cyan-500 transition border" placeholder="e.g., 850" />
-                        </div>
-                        <div>
-                            <label htmlFor="freeTestosterone" className="block text-sm font-medium text-gray-400 mb-2">Free Testosterone <span className="text-red-400">*</span></label>
-                            <input type="text" pattern="[0-9]*" name="freeTestosterone" id="freeTestosterone" value={formData.labs.freeTestosterone} onChange={handleLabChange} className="w-full bg-gray-900/50 border-gray-700 text-white rounded-lg p-3 focus:ring-cyan-500 focus:border-cyan-500 transition border" placeholder="e.g., 25" required />
-                        </div>
-                        <div>
-                            <label htmlFor="estradiol" className="block text-sm font-medium text-gray-400 mb-2">Estradiol (Sensitive) <span className="text-red-400">*</span></label>
-                            <input type="text" pattern="[0-9]*" name="estradiol" id="estradiol" value={formData.labs.estradiol} onChange={handleLabChange} className="w-full bg-gray-900/50 border-gray-700 text-white rounded-lg p-3 focus:ring-cyan-500 focus:border-cyan-500 transition border" placeholder="e.g., 35" required />
-                        </div>
-                        <div>
-                            <label htmlFor="hematocrit" className="block text-sm font-medium text-gray-400 mb-2">Hematocrit <span className="text-red-400">*</span></label>
-                            <input type="text" pattern="[0-9.]*" name="hematocrit" id="hematocrit" value={formData.labs.hematocrit} onChange={handleLabChange} className="w-full bg-gray-900/50 border-gray-700 text-white rounded-lg p-3 focus:ring-cyan-500 focus:border-cyan-500 transition border" placeholder="e.g., 48.5" required />
+                );
+            case 'AWAITING_PAYMENT':
+                return (
+                    <div className="w-full max-w-lg mx-auto animate-fade-in text-center">
+                        <div className="bg-gray-900/50 backdrop-blur-xl p-8 rounded-lg shadow-2xl border border-cyan-500/20">
+                            <ShieldCheckIcon className="w-16 h-16 mx-auto text-cyan-400 animate-pulse-icon mb-4" />
+                            <h2 className="text-2xl font-bold text-cyan-400 mb-2">One-Time Secure Payment</h2>
+                            <p className="text-gray-400 mb-6">Your comprehensive lab analysis is ready. A one-time fee of $4.99 unlocks your personalized report.</p>
+                            
+                            {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm text-left">{error}</div>}
+
+                            <a href={PAYMENT_URL} onClick={() => trackEvent('proceed_to_payment')} className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-500 transition-all duration-300 transform hover:scale-105">
+                                <CreditCardIcon className="w-6 h-6" /> Pay Now & Get Report
+                            </a>
+
+                            <div className="text-xs text-gray-500 mt-4">
+                                <p>You will be redirected to Stripe for secure payment.</p>
+                                <p className="mt-2">Having trouble? <a href="mailto:support@yourapp.com" className="text-cyan-400 hover:underline">Contact Support</a></p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            );
-            case 3: return (
-                 <div>
-                    <h2 className="text-2xl font-bold text-center text-gray-100 mb-6">Your Current Symptoms</h2>
-                    <p className="text-center text-gray-400 mb-6 text-sm">Select any symptoms you're currently experiencing. This provides crucial context for the analysis.</p>
-                    <SymptomsSelector selectedSymptoms={formData.symptoms} onChange={handleSymptomChange} />
-                </div>
-            );
-            default: return null;
+                );
+            case 'VERIFYING_PAYMENT':
+                 return (
+                    <div className="text-center animate-fade-in">
+                        <div className="flex items-center justify-center space-x-3">
+                           <svg className="animate-spin h-8 w-8 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                           </svg>
+                           <h2 className="text-2xl font-bold text-cyan-400">Verifying Payment...</h2>
+                        </div>
+                        <p className="text-gray-400 mt-2">Thank you for your purchase. Please wait while we confirm your transaction.</p>
+                    </div>
+                );
+            case 'ANALYZING':
+                return (
+                    <div className="text-center animate-fade-in">
+                         <div className="flex items-center justify-center space-x-3">
+                           <svg className="animate-spin h-8 w-8 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                           </svg>
+                           <h2 className="text-2xl font-bold text-cyan-400">Analyzing Your Results...</h2>
+                        </div>
+                        <p className="text-gray-400 mt-2 h-6 transition-opacity duration-500">{analyzingText}</p>
+                    </div>
+                );
+            case 'RESULT':
+                return <ResultDisplay result={analysisResult} onReset={handleResetWithConfirmation} />;
         }
     };
 
     return (
-        <div className="bg-transparent text-white min-h-screen font-sans p-4 sm:p-6 flex flex-col items-center">
-            <div className="w-full max-w-2xl mx-auto">
-                <header className="text-center mb-8">
-                    <div className="flex items-center justify-center gap-3">
-                        <SparklesIcon className="w-8 h-8 text-cyan-400" />
-                        <h1 className="text-3xl sm:text-4xl font-bold text-gray-100">
-                            TRT Lab Analyzer
-                        </h1>
-                    </div>
-                     <p className="text-gray-400 mt-2">Powered by Dr. T's Expert Methodology</p>
-                </header>
-
-                {appState === 'INTRO' && (
-                    <div className="bg-gray-900/50 backdrop-blur-xl p-6 sm:p-8 rounded-xl shadow-2xl text-center animate-slide-up border border-cyan-500/20">
-                        <h2 className="text-2xl sm:text-3xl font-bold text-cyan-400">Turn Lab Numbers into Actionable Insights</h2>
-                        <p className="text-gray-300 mt-4 leading-relaxed max-w-prose mx-auto">
-                           Stop guessing. Get a breakdown of your TRT labs powered by Dr. T's expert methodology and receive clear, personalized discussion points to share with your doctor.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left my-8">
-                           <div className="bg-black/20 p-4 rounded-lg border border-gray-700/50"><strong>1. Input Your Data:</strong> Securely enter your current protocol, key lab values, and any symptoms.</div>
-                           <div className="bg-black/20 p-4 rounded-lg border border-gray-700/50"><strong>2. Get Your Analysis:</strong> Our system analyzes your data to identify areas for optimization.</div>
-                           <div className="bg-black/20 p-4 rounded-lg border border-gray-700/50"><strong>3. Empower Your Doctor Visit:</strong> Receive a personalized guide for your next appointment.</div>
-                        </div>
-                        <button onClick={() => { setAppState('FORM'); trackEvent('analysis_started'); }} className="bg-cyan-600/20 border border-cyan-500 text-cyan-300 hover:bg-cyan-500/30 hover:text-white font-bold py-3 px-8 rounded-lg text-lg transition-all duration-300 shadow-lg w-full sm:w-auto animate-glow">
-                            Start My Analysis
-                        </button>
-                    </div>
-                )}
-                
-                {appState === 'FORM' && (
-                    <div className="bg-gray-900/50 backdrop-blur-xl p-6 sm:p-8 rounded-xl shadow-2xl animate-slide-up border border-cyan-500/20">
-                        <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
-                        {error && <p className="text-red-400 bg-red-900/50 border border-red-700 rounded-md p-3 text-center mb-6">{error}</p>}
-                        <div className="min-h-[300px]">
-                          {renderStepContent()}
-                        </div>
-                        <div className="flex justify-between mt-8 pt-6 border-t border-gray-700">
-                            <button onClick={handleBack} disabled={currentStep === 1} className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 border border-gray-600 hover:bg-gray-600/50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                                <ChevronLeftIcon className="w-5 h-5" /> Back
-                            </button>
-                            {currentStep < TOTAL_STEPS ? (
-                                <button onClick={handleNext} className="flex items-center gap-2 px-4 py-2 bg-cyan-600/20 border border-cyan-500 text-cyan-300 hover:bg-cyan-500/30 rounded-lg transition-colors">
-                                    Next <ChevronRightIcon className="w-5 h-5" />
-                                </button>
-                            ) : (
-                                <button onClick={handleAttemptAnalysis} className="flex items-center gap-2 px-4 py-2 bg-cyan-600/20 border border-cyan-500 text-cyan-300 hover:bg-cyan-500/30 rounded-lg font-bold transition-colors animate-glow">
-                                    <SparklesIcon className="w-5 h-5" /> Finalize & Analyze
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {appState === 'AWAITING_PAYMENT' && (
-                     <div className="bg-gray-900/50 backdrop-blur-xl p-6 sm:p-8 rounded-xl shadow-2xl max-w-lg mx-auto w-full animate-slide-up border border-cyan-500/20">
-                        <div className="text-center">
-                            <CreditCardIcon className="w-12 h-12 mx-auto text-cyan-400" />
-                            <h2 className="text-2xl font-bold mt-4">One-Time Payment Required</h2>
-                        </div>
-                        <p className="text-center text-gray-300 mt-4">
-                            Your lab results are ready for a detailed analysis. Complete the secure payment to receive your personalized report.
-                        </p>
-                        <div className="bg-black/20 p-4 rounded-lg my-6 text-center border border-gray-700/50">
-                            <span className="text-3xl font-bold text-white">$10.00</span>
-                            <span className="text-gray-400"> / one-time analysis</span>
-                        </div>
-                        <a href={PAYMENT_URL} target="_blank" rel="noopener noreferrer" onClick={() => trackEvent('payment_initiated')} className="flex items-center justify-center w-full gap-3 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-300 shadow-lg hover:shadow-xl">
-                           <ShieldCheckIcon className="w-6 h-6" /> Proceed to Secure Payment
-                        </a>
-                        <div className="relative flex py-5 items-center">
-                            <div className="flex-grow border-t border-gray-600"></div>
-                            <span className="flex-shrink mx-4 text-gray-400 text-sm">After you pay</span>
-                            <div className="flex-grow border-t border-gray-600"></div>
-                        </div>
-                        <div className="mt-2 text-center text-gray-400 text-sm space-y-2">
-                             <p>1. You will be redirected to Stripe to pay.</p>
-                             <p>2. After paying, come back. Your analysis should start automatically.</p>
-                             <p className="text-xs text-gray-500 mt-2">If it doesn't, your session was restored and is ready.</p>
-                        </div>
-                         {error && <p className="text-red-400 text-center text-sm mt-4">{error}</p>}
-                         <div className="text-center mt-6">
-                            <button 
-                                onClick={endSessionAndReset}
-                                className="text-sm text-gray-400 hover:text-white hover:underline transition-colors"
-                            >
-                                Or, start a new analysis
-                            </button>
-                        </div>
-                         <p className="text-xs text-gray-500 text-center mt-6">
-                            Need help? <a href="mailto:support@email.com" className="underline hover:text-gray-400">Contact Support</a>.
-                        </p>
-                    </div>
-                )}
-
-                {(appState === 'VERIFYING_PAYMENT' || appState === 'ANALYZING') && (
-                    <div className="bg-gray-900/50 backdrop-blur-xl p-8 rounded-xl shadow-2xl text-center animate-fade-in border border-cyan-500/20">
-                        <SparklesIcon className="w-12 h-12 mx-auto text-cyan-400 animate-pulse-icon" />
-                        <h2 className="text-2xl font-bold mt-4">Analyzing Your Results...</h2>
-                        <p className="text-gray-300 mt-2 transition-opacity duration-500" key={analyzingText}>{analyzingText}</p>
-                        <div className="w-full bg-gray-800/50 rounded-full h-2.5 mt-6 overflow-hidden border border-cyan-500/20">
-                          <div className="bg-cyan-500 h-2 rounded-full animate-pulse" style={{width: '100%'}}></div>
-                        </div>
-                    </div>
-                )}
-
-                {appState === 'RESULT' && (
-                   <ResultDisplay result={analysisResult} />
-                )}
-            </div>
+        <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-4 sm:p-6 font-sans">
+            <main className="w-full max-w-4xl mx-auto">
+                {renderContent()}
+            </main>
         </div>
     );
 };
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);
-root.render(<App />);
+root.render(
+    <React.StrictMode>
+        <App />
+    </React.StrictMode>
+);
