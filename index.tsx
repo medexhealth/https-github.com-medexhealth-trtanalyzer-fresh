@@ -1,45 +1,30 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 
-// --- TYPES ---
+// --- TYPES (as plain JS Objects) ---
 const InjectionFrequency = {
   ONCE_A_WEEK: 'Once a week',
   TWICE_A_WEEK: 'Twice a week',
   THREE_TIMES_A_WEEK: 'Three times a week or more',
   OTHER: 'Other',
-} as const;
+};
 
 const BloodTestTiming = {
   PEAK: 'Peak (1-2 days after injection)',
   MID: 'Mid-cycle (3-5 days after injection)',
   TROUGH: 'Trough (day of next injection, before injecting)',
   UNSURE: 'Unsure',
-} as const;
-
-interface LabValues {
-  totalTestosterone: string;
-  freeTestosterone: string;
-  estradiol: string;
-  hematocrit: string;
-}
-
-interface FormData {
-  injectionFrequency: string;
-  bloodTestTiming: string;
-  labs: LabValues;
-  symptoms: string[];
-}
+};
 
 // --- ANALYTICS ---
-const trackEvent = (eventName: string, properties: object = {}) => {
+const trackEvent = (eventName, properties = {}) => {
   console.log(`[Analytics] Event: ${eventName}`, properties);
   // In a real-world scenario, this would send data to an analytics service like Google Analytics, PostHog, etc.
 };
 
 
 // --- SECURE ANALYSIS SERVICE ---
-const analyzeLabResults = async (formData: FormData): Promise<string> => {
+const analyzeLabResults = async (formData) => {
   try {
     const response = await fetch('/.netlify/functions/analyze', {
       method: 'POST',
@@ -80,42 +65,42 @@ const analyzeLabResults = async (formData: FormData): Promise<string> => {
 };
 
 // --- ICON COMPONENTS ---
-const ChevronLeftIcon = (props: React.SVGProps<SVGSVGElement>) => (
+const ChevronLeftIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
     </svg>
 );
-const ChevronRightIcon = (props: React.SVGProps<SVGSVGElement>) => (
+const ChevronRightIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
     </svg>
 );
-const SparklesIcon = (props: React.SVGProps<SVGSVGElement>) => (
+const SparklesIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
     </svg>
 );
-const CreditCardIcon = (props: React.SVGProps<SVGSVGElement>) => (
+const CreditCardIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.5 3.75h15a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 21Z" />
     </svg>
 );
-const ShieldCheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
+const ShieldCheckIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286Z" />
     </svg>
 );
-const CheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
+const CheckIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
     </svg>
 );
-const ClipboardIcon = (props: React.SVGProps<SVGSVGElement>) => (
+const ClipboardIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a2.25 2.25 0 0 1-2.25 2.25h-1.5a2.25 2.25 0 0 1-2.25-2.25v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
     </svg>
 );
-const ArrowPathIcon = (props: React.SVGProps<SVGSVGElement>) => (
+const ArrowPathIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 11.667 0l3.181-3.183m-4.991-2.696v4.992h-4.992m0 0-3.181-3.183a8.25 8.25 0 0 1 11.667 0l3.181 3.183" />
     </svg>
@@ -124,12 +109,12 @@ const ArrowPathIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 // --- UI COMPONENTS (Re-integrated) ---
 
-const Markdown = ({ content }: { content: string }) => {
+const Markdown = ({ content }) => {
     const lines = content.split('\n');
     let html = '';
     let inList = false;
 
-    const processInline = (text: string) => text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    const processInline = (text) => text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
     for (const line of lines) {
         if (line.trim().startsWith('### ')) {
@@ -149,7 +134,7 @@ const Markdown = ({ content }: { content: string }) => {
     return <div className="space-y-2" dangerouslySetInnerHTML={{ __html: html }} />;
 };
 
-const ResultDisplay = ({ result, onReset }: { result: string, onReset: () => void }) => {
+const ResultDisplay = ({ result, onReset }) => {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
@@ -214,7 +199,7 @@ const ResultDisplay = ({ result, onReset }: { result: string, onReset: () => voi
     );
 };
 
-const StepIndicator = ({ currentStep, totalSteps }: { currentStep: number, totalSteps: number }) => (
+const StepIndicator = ({ currentStep, totalSteps }) => (
     <div className="flex justify-center items-center space-x-2 sm:space-x-4 mb-8">
         {Array.from({ length: totalSteps }, (_, i) => {
             const step = i + 1;
@@ -240,9 +225,9 @@ const SymptomsList = [
   'Mood swings', 'Acne', 'Water retention', 'None of the above'
 ];
 
-const SymptomsSelector = ({ selectedSymptoms, onChange }: { selectedSymptoms: string[], onChange: (symptoms: string[]) => void }) => {
-    const handleSymptomToggle = (symptom: string) => {
-        let newSelection: string[];
+const SymptomsSelector = ({ selectedSymptoms, onChange }) => {
+    const handleSymptomToggle = (symptom) => {
+        let newSelection;
         if (symptom === 'None of the above') {
             newSelection = selectedSymptoms.includes(symptom) ? [] : ['None of the above'];
         } else {
@@ -274,12 +259,11 @@ const SymptomsSelector = ({ selectedSymptoms, onChange }: { selectedSymptoms: st
 
 // --- MAIN APP COMPONENT ---
 const App = () => {
-    type AppState = 'INTRO' | 'FORM' | 'AWAITING_PAYMENT' | 'VERIFYING_PAYMENT' | 'ANALYZING' | 'RESULT';
-    const [appState, setAppState] = useState<AppState>('INTRO');
+    const [appState, setAppState] = useState('INTRO');
     const [currentStep, setCurrentStep] = useState(1);
-    const [analysisSession, setAnalysisSession] = useState<any>(null);
+    const [analysisSession, setAnalysisSession] = useState(null);
     
-    const [formData, setFormData] = useState<FormData>({
+    const [formData, setFormData] = useState({
         injectionFrequency: '',
         bloodTestTiming: '',
         labs: { totalTestosterone: '', freeTestosterone: '', estradiol: '', hematocrit: '' },
@@ -318,7 +302,7 @@ const App = () => {
         }
     };
 
-    const processAnalysisResult = useCallback((result: string, dataToAnalyze: FormData, currentSession: any) => {
+    const processAnalysisResult = useCallback((result, dataToAnalyze, currentSession) => {
         if (result && result.toLowerCase().startsWith('error:')) {
             setError(result);
             setAnalysisResult('');
@@ -335,7 +319,7 @@ const App = () => {
         }
     }, []);
     
-    const runAnalysis = useCallback(async (dataToAnalyze: FormData, currentSession: any) => {
+    const runAnalysis = useCallback(async (dataToAnalyze, currentSession) => {
         if (!currentSession) {
             setError("Your session has expired. Please start a new analysis.");
             endSessionAndReset();
@@ -416,10 +400,10 @@ const App = () => {
 
     const handleNext = () => currentStep < TOTAL_STEPS && setCurrentStep(currentStep + 1);
     const handleBack = () => currentStep > 1 && setCurrentStep(currentStep - 1);
-    const handleLabChange = (e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, labs: { ...prev.labs, [e.target.name]: e.target.value } }));
-    const handleFrequencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => setFormData(prev => ({ ...prev, injectionFrequency: e.target.value }));
-    const handleTimingChange = (e: React.ChangeEvent<HTMLSelectElement>) => setFormData(prev => ({ ...prev, bloodTestTiming: e.target.value }));
-    const handleSymptomChange = (symptoms: string[]) => setFormData(prev => ({ ...prev, symptoms }));
+    const handleLabChange = (e) => setFormData(prev => ({ ...prev, labs: { ...prev.labs, [e.target.name]: e.target.value } }));
+    const handleFrequencyChange = (e) => setFormData(prev => ({ ...prev, injectionFrequency: e.target.value }));
+    const handleTimingChange = (e) => setFormData(prev => ({ ...prev, bloodTestTiming: e.target.value }));
+    const handleSymptomChange = (symptoms) => setFormData(prev => ({ ...prev, symptoms }));
     
     const handleAttemptAnalysis = () => {
         if (!formData.labs.freeTestosterone || !formData.labs.estradiol || !formData.labs.hematocrit) {
@@ -445,12 +429,11 @@ const App = () => {
             case 'INTRO':
                 return (
                     <div className="text-center animate-fade-in">
-                        <h1 className="text-4xl sm:text-5xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-blue-500 mb-2">TRT Optimization Assistant v1.1</h1>
-                        <p className="text-lg text-gray-400 max-w-2xl mx-auto">Get an AI-powered analysis of your TRT lab results, based on the clinical experience of a TRT expert.</p>
-                        <p className="text-sm text-gray-500 max-w-2xl mx-auto mt-2 mb-8">This tool provides an informational analysis to help you prepare for a discussion with your doctor. It is not medical advice.</p>
+                        <h1 className="text-4xl sm:text-5xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-blue-500 mb-4">TRT Lab Analyzer</h1>
+                        <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">Get an AI-powered analysis of your TRT lab results. A one-time payment unlocks your personalized report, designed to help you prepare for a discussion with your doctor. This is not medical advice.</p>
                         <button onClick={() => { setAppState('FORM'); trackEvent('start_analysis_clicked'); }} className="group relative inline-flex items-center justify-center px-8 py-3 text-lg font-bold text-white bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-lg shadow-lg hover:shadow-cyan-500/50 transition-shadow duration-300">
                             <SparklesIcon className="w-6 h-6 mr-3 transform transition-transform duration-300 group-hover:rotate-12" />
-                            Start Free Analysis
+                            Start Analysis & Get Report
                         </button>
                     </div>
                 );
@@ -595,7 +578,7 @@ const App = () => {
     );
 };
 
-const root = ReactDOM.createRoot(document.getElementById('root')!);
+const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
     <React.StrictMode>
         <App />

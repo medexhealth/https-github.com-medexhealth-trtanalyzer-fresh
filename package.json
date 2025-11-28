@@ -1,9 +1,24 @@
 {
   "name": "trt-optimization-assistant-app",
   "version": "1.0.0",
-  "description": "Frontend and backend for the TRT Optimization Assistant.",
   "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
-    "@google/genai": "^1.28.0"
+    "@google/generative-ai": "^0.21.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.24",
+    "tailwindcss": "^3.3.2",
+    "vite": "^4.3.9"
   }
 }
