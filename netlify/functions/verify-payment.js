@@ -23,12 +23,22 @@ export const handler = async (event) => {
     }
 
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentId);
-    const verified = paymentIntent.status === 'succeeded';
+    const isSucceeded = paymentIntent.status === 'succeeded';
+
+    // Check if payment was made within the last 7 days
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const paymentAgeMs = Date.now() - (paymentIntent.created * 1000); // Stripe timestamps are in seconds
+    const isWithinWindow = paymentAgeMs < sevenDaysMs;
+
+    const verified = isSucceeded && isWithinWindow;
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ verified }),
+      body: JSON.stringify({
+        verified,
+        expired: isSucceeded && !isWithinWindow,
+      }),
     };
   } catch (error) {
     console.error('Stripe verification error:', error);
