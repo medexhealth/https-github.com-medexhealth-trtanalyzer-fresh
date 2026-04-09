@@ -29,7 +29,7 @@ export const handler = async (event) => {
   }
 
   try {
-    const formData = JSON.parse(event.body);
+    const { formData } = JSON.parse(event.body);
     console.log("Successfully parsed formData from request body.");
 
     const ai = new GoogleGenAI({ apiKey });
