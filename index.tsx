@@ -252,7 +252,7 @@ const App = () => {
     ];
     const [analyzingText, setAnalyzingText] = useState(analyzingMessages[0]);
     const TOTAL_STEPS = 3;
-    const PAYMENT_URL = 'https://buy.stripe.com/5kQeVe2rT6gD9etfqx2Fa01';
+    const PAYMENT_URL = 'https://buy.stripe.com/14AfZid6xgVhfCRa6d2Fa02';
     const BYPASS_CODES = [
       { code: 'DRTNOV25', expiry: new Date('2026-06-01').getTime() },
       { code: 'DRTCOMP', expiry: new Date('2026-06-01').getTime() },
