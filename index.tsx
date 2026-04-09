@@ -19,40 +19,55 @@ const trackEvent = (eventName, properties = {}) => {
   // In a real-world scenario, this would send data to an analytics service like Google Analytics, PostHog, etc.
 };
 // --- SECURE ANALYSIS SERVICE ---
-const analyzeLabResults = async (formData) => {
-  try {
-    const response = await fetch('/.netlify/functions/analyze', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ formData }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({})); // Gracefully handle non-JSON responses
-      console.error("Backend function error:", errorData);
+const analyzeLabResults = async (formData, maxRetries = 3) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[Analysis] Attempt ${attempt} of ${maxRetries}...`);
+      const response = await fetch('/.netlify/functions/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ formData }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Backend function error:", errorData);
 
-      if (errorData.error) {
-        const lowerError = errorData.error.toLowerCase();
-        if (lowerError.includes('api key')) {
-          return "Error: The server reported a problem with the API key. Please double-check that the GEMINI_API_KEY is correctly set in your Netlify site settings. Ensure there are no extra spaces or characters copied by mistake.";
+        if (errorData.error) {
+          const lowerError = errorData.error.toLowerCase();
+          if (lowerError.includes('api key')) {
+            return "Error: The server reported a problem with the API key. Please double-check that the GEMINI_API_KEY is correctly set in your Netlify site settings. Ensure there are no extra spaces or characters copied by mistake.";
+          }
+          if (lowerError.includes('safety settings')) {
+            return "Error: The analysis was blocked by the AI's safety filter. This can happen with medical data. Please adjust your inputs and retry.";
+          }
         }
-        if (lowerError.includes('safety settings')) {
-          return "Error: The analysis was blocked by the AI's safety filter. This can happen with medical data. Please adjust your inputs and retry.";
+
+        // If it's a 500 or 504 (timeout), retry
+        if ((response.status === 500 || response.status === 504) && attempt < maxRetries) {
+          console.log(`[Analysis] Got ${response.status}, retrying in 2 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
         }
+
+        return `Error: The analysis service is temporarily unavailable (Status: ${response.status}). Please try again.`;
+      }
+      const data = await response.json();
+      if (data.error) {
+        return `Error: ${data.error}`;
       }
 
-      return `Error: The analysis service is temporarily unavailable (Status: ${response.status}). Please try again.`;
+      return data.result;
+    } catch (error) {
+      console.error("Error calling backend function:", error);
+      if (attempt < maxRetries) {
+        console.log(`[Analysis] Network error, retrying in 2 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        continue;
+      }
+      return "An error occurred while connecting to the analysis service. Please check your internet connection and try again.";
     }
-    const data = await response.json();
-    if (data.error) {
-      return `Error: ${data.error}`;
-    }
-
-    return data.result;
-  } catch (error) {
-    console.error("Error calling backend function:", error);
-    return "An error occurred while connecting to the analysis service. Please check your internet connection and try again.";
   }
 };
 // --- ICON COMPONENTS ---
@@ -248,7 +263,9 @@ const App = () => {
       'Analyzing estradiol levels against reported symptoms...',
       'Consulting clinical patterns from Dr. T\'s training data...',
       'Cross-referencing biomarkers with your current protocol...',
-      'Formatting your Personalized Doctor Discussion Guide...'
+      'Formatting your Personalized Doctor Discussion Guide...',
+      'Still working on your analysis, please hold tight...',
+      'Almost there, finalizing your personalized report...'
     ];
     const [analyzingText, setAnalyzingText] = useState(analyzingMessages[0]);
     const TOTAL_STEPS = 3;
