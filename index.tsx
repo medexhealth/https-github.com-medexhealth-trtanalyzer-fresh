@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-
 // --- TYPES (as plain JS Objects) ---
 const InjectionFrequency = {
   ONCE_A_WEEK: 'Once a week',
@@ -8,21 +7,17 @@ const InjectionFrequency = {
   THREE_TIMES_A_WEEK: 'Three times a week or more',
   OTHER: 'Other',
 };
-
 const BloodTestTiming = {
   PEAK: 'Peak (1-2 days after injection)',
   MID: 'Mid-cycle (3-5 days after injection)',
   TROUGH: 'Trough (day of next injection, before injecting)',
   UNSURE: 'Unsure',
 };
-
 // --- ANALYTICS ---
 const trackEvent = (eventName, properties = {}) => {
   console.log(`[Analytics] Event: ${eventName}`, properties);
   // In a real-world scenario, this would send data to an analytics service like Google Analytics, PostHog, etc.
 };
-
-
 // --- SECURE ANALYSIS SERVICE ---
 const analyzeLabResults = async (formData) => {
   try {
@@ -33,11 +28,10 @@ const analyzeLabResults = async (formData) => {
       },
       body: JSON.stringify({ formData }),
     });
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({})); // Gracefully handle non-JSON responses
       console.error("Backend function error:", errorData);
-      
+
       if (errorData.error) {
         const lowerError = errorData.error.toLowerCase();
         if (lowerError.includes('api key')) {
@@ -47,23 +41,20 @@ const analyzeLabResults = async (formData) => {
           return "Error: The analysis was blocked by the AI's safety filter. This can happen with medical data. Please adjust your inputs and retry.";
         }
       }
-      
+
       return `Error: The analysis service is temporarily unavailable (Status: ${response.status}). Please try again.`;
     }
-
     const data = await response.json();
     if (data.error) {
       return `Error: ${data.error}`;
     }
-    
-    return data.result;
 
+    return data.result;
   } catch (error) {
     console.error("Error calling backend function:", error);
     return "An error occurred while connecting to the analysis service. Please check your internet connection and try again.";
   }
 };
-
 // --- ICON COMPONENTS ---
 const ChevronLeftIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
@@ -105,17 +96,12 @@ const ArrowPathIcon = (props) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 11.667 0l3.181-3.183m-4.991-2.696v4.992h-4.992m0 0-3.181-3.183a8.25 8.25 0 0 1 11.667 0l3.181 3.183" />
     </svg>
 );
-
-
 // --- UI COMPONENTS (Re-integrated) ---
-
 const Markdown = ({ content }) => {
     const lines = content.split('\n');
     let html = '';
     let inList = false;
-
     const processInline = (text) => text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
     for (const line of lines) {
         if (line.trim().startsWith('### ')) {
             if (inList) { html += '</ul>'; inList = false; }
@@ -128,54 +114,45 @@ const Markdown = ({ content }) => {
             html += `<p>${processInline(line.trim())}</p>`;
         }
     }
-
     if (inList) { html += '</ul>'; }
-
     return <div className="space-y-2" dangerouslySetInnerHTML={{ __html: html }} />;
 };
-
 const ResultDisplay = ({ result, onReset }) => {
     const [copied, setCopied] = useState(false);
-
     const handleCopy = () => {
         const guideTitle = "### Your Personalized Doctor Discussion Guide";
         const disclaimerTitle = "### Important Disclaimer";
-
         const startIndex = result.indexOf(guideTitle);
-        
+
         if (startIndex === -1) {
             console.error("Could not find the discussion guide section to copy.");
             // Fallback to copying entire text if guide isn't found
             navigator.clipboard.writeText(result);
             return;
         }
-
         const disclaimerIndex = result.indexOf(disclaimerTitle, startIndex);
-        
-        let textToCopy = disclaimerIndex !== -1 
+
+        let textToCopy = disclaimerIndex !== -1
             ? result.substring(startIndex, disclaimerIndex)
             : result.substring(startIndex);
-
         // Clean up markdown for plain text
         textToCopy = textToCopy
             .replace(/###.*?\n/g, '') // Remove headings
             .replace(/\*\*/g, '')      // Remove bold markers
             .replace(/- /g, '\n- ')     // Add newline before list items
             .trim();
-
         navigator.clipboard.writeText(textToCopy).then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         });
     };
-
     if (!result) return null;
     return (
         <div className="animate-fade-in">
             <div className="bg-gray-900/50 backdrop-blur-xl p-6 rounded-lg shadow-2xl border border-cyan-500/20">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold text-cyan-400">Analysis Report</h2>
-                    <button 
+                    <button
                         onClick={handleCopy}
                         className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-800/70 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 hover:text-cyan-200 rounded-lg transition-all duration-200 disabled:opacity-50"
                         disabled={copied}
@@ -188,7 +165,7 @@ const ResultDisplay = ({ result, onReset }) => {
                 </div>
             </div>
             <div className="mt-6 text-center">
-                <button 
+                <button
                     onClick={onReset}
                     className="flex items-center justify-center w-full sm:w-auto mx-auto gap-2 px-6 py-3 bg-gray-700/50 border border-gray-600 text-gray-300 hover:bg-gray-600/50 hover:text-white rounded-lg transition-colors duration-200"
                 >
@@ -198,7 +175,6 @@ const ResultDisplay = ({ result, onReset }) => {
         </div>
     );
 };
-
 const StepIndicator = ({ currentStep, totalSteps }) => (
     <div className="flex justify-center items-center space-x-2 sm:space-x-4 mb-8">
         {Array.from({ length: totalSteps }, (_, i) => {
@@ -218,13 +194,11 @@ const StepIndicator = ({ currentStep, totalSteps }) => (
         })}
     </div>
 );
-
 const SymptomsList = [
   'Anxiety', 'Sleep disturbance', 'Heart palpitations', 'High blood pressure',
   'Chest pain', 'Low libido', 'Erectile dysfunction', 'Fatigue',
   'Mood swings', 'Acne', 'Water retention', 'None of the above'
 ];
-
 const SymptomsSelector = ({ selectedSymptoms, onChange }) => {
     const handleSymptomToggle = (symptom) => {
         let newSelection;
@@ -239,7 +213,6 @@ const SymptomsSelector = ({ selectedSymptoms, onChange }) => {
         }
         onChange(newSelection);
     };
-
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {SymptomsList.map(symptom => (
@@ -255,14 +228,12 @@ const SymptomsSelector = ({ selectedSymptoms, onChange }) => {
         </div>
     );
 };
-
-
 // --- MAIN APP COMPONENT ---
 const App = () => {
     const [appState, setAppState] = useState('INTRO');
     const [currentStep, setCurrentStep] = useState(1);
     const [analysisSession, setAnalysisSession] = useState(null);
-    
+
     const [formData, setFormData] = useState({
         injectionFrequency: '',
         bloodTestTiming: '',
@@ -272,7 +243,6 @@ const App = () => {
     const [analysisResult, setAnalysisResult] = useState('');
     const [error, setError] = useState('');
     const [bypassCode, setBypassCode] = useState('');
-
     const analyzingMessages = [
       'Correlating hematocrit with your injection frequency...',
       'Analyzing estradiol levels against reported symptoms...',
@@ -281,17 +251,17 @@ const App = () => {
       'Formatting your Personalized Doctor Discussion Guide...'
     ];
     const [analyzingText, setAnalyzingText] = useState(analyzingMessages[0]);
-
     const TOTAL_STEPS = 3;
     const PAYMENT_URL = 'https://buy.stripe.com/5kQeVe2rT6gD9etfqx2Fa01';
-    const BYPASS_CODES = ['DRTNOV25', 'DRTCOMP'];
-
+    const BYPASS_CODES = [
+      { code: 'DRTNOV25', expiry: new Date('2026-06-01').getTime() },
+      { code: 'DRTCOMP', expiry: new Date('2026-06-01').getTime() },
+    ];
     const endSessionAndReset = useCallback(() => {
         localStorage.removeItem('analysisSession');
         setAnalysisSession(null);
         window.location.reload();
     }, []);
-
     const handleResetWithConfirmation = () => {
         const userConfirmed = window.confirm(
             "Are you sure you want to start a new analysis? Your current report will be cleared from this browser session."
@@ -303,12 +273,11 @@ const App = () => {
             trackEvent('session_reset_cancelled');
         }
     };
-
     const processAnalysisResult = useCallback((result, dataToAnalyze, currentSession) => {
         if (result && result.toLowerCase().startsWith('error:')) {
             setError(result);
             setAnalysisResult('');
-            setAppState('AWAITING_PAYMENT'); 
+            setAppState('AWAITING_PAYMENT');
         } else if (result) {
             setAnalysisResult(result);
             const updatedSession = { ...currentSession, result, formData: dataToAnalyze };
@@ -320,7 +289,7 @@ const App = () => {
             setAppState('AWAITING_PAYMENT');
         }
     }, []);
-    
+
     const runAnalysis = useCallback(async (dataToAnalyze, currentSession) => {
         if (!currentSession) {
             setError("Your session has expired. Please start a new analysis.");
@@ -337,11 +306,9 @@ const App = () => {
             setAppState('AWAITING_PAYMENT');
         }
     }, [endSessionAndReset, processAnalysisResult]);
-
     useEffect(() => {
         trackEvent('page_view');
     }, []);
-
     useEffect(() => {
         if (appState === 'ANALYZING') {
             let messageIndex = 0;
@@ -349,16 +316,13 @@ const App = () => {
                 messageIndex = (messageIndex + 1) % analyzingMessages.length;
                 setAnalyzingText(analyzingMessages[messageIndex]);
             }, 2500); // Change message every 2.5 seconds
-
             return () => clearInterval(intervalId);
         }
     }, [appState, analyzingMessages]);
-
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const stripeSessionId = urlParams.get('session_id');
         const storedSessionJSON = localStorage.getItem('analysisSession');
-
         if (stripeSessionId?.startsWith('cs_') && storedSessionJSON) {
             setAppState('VERIFYING_PAYMENT');
             trackEvent('purchase_completed', { stripe_session_id: stripeSessionId });
@@ -399,14 +363,13 @@ const App = () => {
             }
         }
     }, [runAnalysis]);
-
     const handleNext = () => currentStep < TOTAL_STEPS && setCurrentStep(currentStep + 1);
     const handleBack = () => currentStep > 1 && setCurrentStep(currentStep - 1);
     const handleLabChange = (e) => setFormData(prev => ({ ...prev, labs: { ...prev.labs, [e.target.name]: e.target.value } }));
     const handleFrequencyChange = (e) => setFormData(prev => ({ ...prev, injectionFrequency: e.target.value }));
     const handleTimingChange = (e) => setFormData(prev => ({ ...prev, bloodTestTiming: e.target.value }));
     const handleSymptomChange = (symptoms) => setFormData(prev => ({ ...prev, symptoms }));
-    
+
     const handleAttemptAnalysis = () => {
         if (!formData.labs.freeTestosterone || !formData.labs.estradiol || !formData.labs.hematocrit) {
             setError('Please fill in at least Free T, Estradiol, and Hematocrit values.');
@@ -414,7 +377,7 @@ const App = () => {
         }
         setError('');
         trackEvent('analysis_attempt');
-        
+
         const newSession = {
             token: crypto.randomUUID(),
             expiry: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -425,7 +388,6 @@ const App = () => {
         localStorage.setItem('analysisSession', JSON.stringify(newSession));
         setAppState('AWAITING_PAYMENT');
     };
-
     const renderContent = () => {
         switch (appState) {
             case 'INTRO':
@@ -445,7 +407,7 @@ const App = () => {
                         <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
                         <div className="bg-gray-900/50 backdrop-blur-xl p-6 sm:p-8 rounded-lg shadow-2xl border border-cyan-500/20">
                             {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm">{error}</div>}
-                            
+
                             {currentStep === 1 && (
                                 <div className="animate-slide-up">
                                     <h2 className="text-2xl font-bold text-cyan-400 mb-1">Your Protocol</h2>
@@ -468,7 +430,6 @@ const App = () => {
                                     </div>
                                 </div>
                             )}
-
                             {currentStep === 2 && (
                                 <div className="animate-slide-up">
                                     <h2 className="text-2xl font-bold text-cyan-400 mb-1">Your Lab Results</h2>
@@ -493,7 +454,6 @@ const App = () => {
                                     </div>
                                 </div>
                             )}
-
                             {currentStep === 3 && (
                                 <div className="animate-slide-up">
                                     <h2 className="text-2xl font-bold text-cyan-400 mb-1">Your Symptoms</h2>
@@ -501,7 +461,6 @@ const App = () => {
                                     <SymptomsSelector selectedSymptoms={formData.symptoms} onChange={handleSymptomChange} />
                                 </div>
                             )}
-
                             <div className="flex justify-between mt-8">
                                 <button onClick={handleBack} disabled={currentStep === 1} className="flex items-center gap-2 px-6 py-2 bg-gray-700/50 border border-gray-600 text-gray-300 hover:bg-gray-600/50 hover:text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                                     <ChevronLeftIcon className="w-4 h-4" /> Back
@@ -526,27 +485,61 @@ const App = () => {
                             <ShieldCheckIcon className="w-16 h-16 mx-auto text-cyan-400 animate-pulse-icon mb-4" />
                             <h2 className="text-2xl font-bold text-cyan-400 mb-2">One-Time Secure Payment</h2>
                             <p className="text-gray-400 mb-6">Your comprehensive lab analysis is ready. A one-time fee of $8.99 unlocks your personalized report.</p>
-                            
-                            {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm text-left">{error}</div>}
 
+                            {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm text-left">{error}</div>}
                             <a href={PAYMENT_URL} onClick={() => trackEvent('proceed_to_payment')} className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-500 transition-all duration-300 transform hover:scale-105">
                                 <CreditCardIcon className="w-6 h-6" /> Pay Now & Get Report
                             </a>
-
                             <div className="mt-6 pt-6 border-t border-gray-700/50">
-                                <p className="text-sm text-gray-400 mb-3">Already paid? Enter your access code:</p>
+                                <p className="text-sm text-gray-400 mb-3">Already paid? Enter your access code or Stripe payment ID:</p>
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
                                         value={bypassCode}
-                                        onChange={(e) => setBypassCode(e.target.value.toUpperCase())}
-                                        placeholder="Enter code"
+                                        onChange={(e) => setBypassCode(e.target.value)}
+                                        placeholder="Enter code or pi_..."
                                         className="flex-1 px-4 py-2 bg-gray-800/70 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                                     />
                                     <button
-                                        onClick={() => {
-                                            if (BYPASS_CODES.includes(bypassCode.trim())) {
-                                                trackEvent('bypass_code_used', { code: bypassCode.trim() });
+                                        onClick={async () => {
+                                            const trimmedCode = bypassCode.trim().replace(/\s/g, '');
+                                            if (trimmedCode.startsWith('pi_')) {
+                                                try {
+                                                    const response = await fetch('/.netlify/functions/verify-payment', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ paymentId: trimmedCode }),
+                                                    });
+                                                    const data = response.ok ? await response.json() : { verified: false };
+                                                    if (!data.verified) {
+                                                        if (data.expired) {
+                                                            setError('This payment is older than 7 days and has expired. Please purchase a new analysis.');
+                                                        } else {
+                                                            setError('Payment ID could not be verified. Please check and try again.');
+                                                        }
+                                                        return;
+                                                    }
+                                                    trackEvent('payment_verified', { paymentId: trimmedCode });
+                                                    const storedSessionJSON = localStorage.getItem('analysisSession');
+                                                    if (storedSessionJSON) {
+                                                        try {
+                                                            const session = JSON.parse(storedSessionJSON);
+                                                            const updatedSession = { ...session, paymentConfirmed: true };
+                                                            localStorage.setItem('analysisSession', JSON.stringify(updatedSession));
+                                                            setAnalysisSession(updatedSession);
+                                                            setFormData(updatedSession.formData);
+                                                            runAnalysis(updatedSession.formData, updatedSession);
+                                                        } catch (e) {
+                                                            setError('Something went wrong. Please try again.');
+                                                        }
+                                                    } else {
+                                                        setError('No analysis session found. Please fill out the form first, then enter your payment ID.');
+                                                    }
+                                                } catch (error) {
+                                                    setError('Payment verification failed. Please try again.');
+                                                }
+                                            } else if (BYPASS_CODES.find(c => c.code.toUpperCase() === trimmedCode.toUpperCase() && c.expiry > Date.now())) {
+                                                trackEvent('bypass_code_used', { code: trimmedCode });
                                                 const storedSessionJSON = localStorage.getItem('analysisSession');
                                                 if (storedSessionJSON) {
                                                     try {
@@ -559,7 +552,11 @@ const App = () => {
                                                     } catch (e) {
                                                         setError('Something went wrong. Please try again.');
                                                     }
+                                                } else {
+                                                    setError('No analysis session found. Please fill out the form first, then enter your code.');
                                                 }
+                                            } else if (BYPASS_CODES.find(c => c.code.toUpperCase() === trimmedCode.toUpperCase() && c.expiry <= Date.now())) {
+                                                setError('This access code has expired. Please purchase a new analysis.');
                                             } else {
                                                 setError('Invalid access code. Please check and try again.');
                                             }
@@ -570,7 +567,6 @@ const App = () => {
                                     </button>
                                 </div>
                             </div>
-
                             <div className="text-xs text-gray-500 mt-4">
                                 <p>You will be redirected to Stripe for secure payment.</p>
                                 <p className="mt-2">Having trouble? <a href="mailto:info@swintegrativemedicine.com" className="text-cyan-400 hover:underline">Contact Support</a></p>
@@ -608,7 +604,6 @@ const App = () => {
                 return <ResultDisplay result={analysisResult} onReset={handleResetWithConfirmation} />;
         }
     };
-
     return (
         <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-4 sm:p-6 font-sans">
             <main className="w-full max-w-4xl mx-auto">
@@ -617,7 +612,6 @@ const App = () => {
         </div>
     );
 };
-
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
     <React.StrictMode>
