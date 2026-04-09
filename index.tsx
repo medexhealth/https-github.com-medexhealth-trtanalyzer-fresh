@@ -271,6 +271,7 @@ const App = () => {
     });
     const [analysisResult, setAnalysisResult] = useState('');
     const [error, setError] = useState('');
+    const [bypassCode, setBypassCode] = useState('');
 
     const analyzingMessages = [
       'Correlating hematocrit with your injection frequency...',
@@ -283,6 +284,7 @@ const App = () => {
 
     const TOTAL_STEPS = 3;
     const PAYMENT_URL = 'https://buy.stripe.com/5kQeVe2rT6gD9etfqx2Fa01';
+    const BYPASS_CODES = ['DRTNOV25', 'DRTCOMP'];
 
     const endSessionAndReset = useCallback(() => {
         localStorage.removeItem('analysisSession');
@@ -523,13 +525,51 @@ const App = () => {
                         <div className="bg-gray-900/50 backdrop-blur-xl p-8 rounded-lg shadow-2xl border border-cyan-500/20">
                             <ShieldCheckIcon className="w-16 h-16 mx-auto text-cyan-400 animate-pulse-icon mb-4" />
                             <h2 className="text-2xl font-bold text-cyan-400 mb-2">One-Time Secure Payment</h2>
-                            <p className="text-gray-400 mb-6">Your comprehensive lab analysis is ready. A one-time fee of $4.99 unlocks your personalized report.</p>
+                            <p className="text-gray-400 mb-6">Your comprehensive lab analysis is ready. A one-time fee of $8.99 unlocks your personalized report.</p>
                             
                             {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm text-left">{error}</div>}
 
                             <a href={PAYMENT_URL} onClick={() => trackEvent('proceed_to_payment')} className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-500 transition-all duration-300 transform hover:scale-105">
                                 <CreditCardIcon className="w-6 h-6" /> Pay Now & Get Report
                             </a>
+
+                            <div className="mt-6 pt-6 border-t border-gray-700/50">
+                                <p className="text-sm text-gray-400 mb-3">Already paid? Enter your access code:</p>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={bypassCode}
+                                        onChange={(e) => setBypassCode(e.target.value.toUpperCase())}
+                                        placeholder="Enter code"
+                                        className="flex-1 px-4 py-2 bg-gray-800/70 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            if (BYPASS_CODES.includes(bypassCode.trim())) {
+                                                trackEvent('bypass_code_used', { code: bypassCode.trim() });
+                                                const storedSessionJSON = localStorage.getItem('analysisSession');
+                                                if (storedSessionJSON) {
+                                                    try {
+                                                        const session = JSON.parse(storedSessionJSON);
+                                                        const updatedSession = { ...session, paymentConfirmed: true };
+                                                        localStorage.setItem('analysisSession', JSON.stringify(updatedSession));
+                                                        setAnalysisSession(updatedSession);
+                                                        setFormData(updatedSession.formData);
+                                                        runAnalysis(updatedSession.formData, updatedSession);
+                                                    } catch (e) {
+                                                        setError('Something went wrong. Please try again.');
+                                                    }
+                                                }
+                                            } else {
+                                                setError('Invalid access code. Please check and try again.');
+                                            }
+                                        }}
+                                        className="px-5 py-2 bg-cyan-600 text-white font-semibold rounded-lg hover:bg-cyan-500 transition-colors duration-200"
+                                    >
+                                        Verify
+                                    </button>
+                                </div>
+                            </div>
 
                             <div className="text-xs text-gray-500 mt-4">
                                 <p>You will be redirected to Stripe for secure payment.</p>
