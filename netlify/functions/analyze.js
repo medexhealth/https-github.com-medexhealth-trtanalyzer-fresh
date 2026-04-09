@@ -192,7 +192,7 @@ CRITICAL CONSTRAINTS:
     console.log("Sending request to Gemini API...");
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       contents: userPrompt,
       config: {
         systemInstruction: systemInstruction,
