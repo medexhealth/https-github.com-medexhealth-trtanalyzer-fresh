@@ -573,7 +573,7 @@ const App = () => {
 
                             <div className="text-xs text-gray-500 mt-4">
                                 <p>You will be redirected to Stripe for secure payment.</p>
-                                <p className="mt-2">Having trouble? <a href="mailto:support@yourapp.com" className="text-cyan-400 hover:underline">Contact Support</a></p>
+                                <p className="mt-2">Having trouble? <a href="mailto:info@swintegrativemedicine.com" className="text-cyan-400 hover:underline">Contact Support</a></p>
                             </div>
                         </div>
                     </div>
