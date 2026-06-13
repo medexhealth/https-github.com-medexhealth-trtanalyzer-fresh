@@ -29,7 +29,7 @@ export const handler = async (event) => {
   }
 
   try {
-    const { formData } = JSON.parse(event.body);
+    const { formData, units, displayLabs } = JSON.parse(event.body);
     console.log("Successfully parsed formData from request body.");
 
     const ai = new GoogleGenAI({ apiKey });
@@ -180,14 +180,37 @@ CRITICAL CONSTRAINTS:
 8. Use cautious language—say "can be" "may" "for some" rather than absolutes
 9. Be empathetic - TRT optimization is a journey with trial and error`;
 
+    // --- Unit-aware lab presentation ---------------------------------------
+    // The clinical reasoning above uses US conventional units. The frontend
+    // converts the patient's entries to US units in `formData.labs` so the
+    // analysis stays accurate. `displayLabs` holds the patient's ORIGINAL
+    // numbers and `units` holds the unit they chose per metric, so the report
+    // can be written back in the patient's own units. Falls back to US-only
+    // behavior when units/displayLabs are absent (older clients).
+    const CANON = { totalTestosterone: 'ng/dL', freeTestosterone: 'pg/mL', estradiol: 'pg/mL', hematocrit: '%' };
+    const U = units || CANON;
+    const D = displayLabs || formData.labs;
+    const labLine = (label, key) => {
+      const us = formData.labs[key];
+      const orig = D ? D[key] : us;
+      const ou = (U && U[key]) || CANON[key];
+      if (orig === undefined || orig === null || orig === '') return `- ${label}: N/A`;
+      if (ou !== CANON[key]) return `- ${label}: ${orig} ${ou} (= ${us} ${CANON[key]} in US units)`;
+      return `- ${label}: ${orig} ${CANON[key]}`;
+    };
+    const nonUS = Object.keys(CANON).some((k) => ((U && U[k]) || CANON[k]) !== CANON[k]);
+    const unitInstruction = nonUS
+      ? `\n\nUNIT PRESENTATION: The patient entered their lab values in these units — Total T: ${U.totalTestosterone}, Free T: ${U.freeTestosterone}, Estradiol: ${U.estradiol}, Hematocrit: ${U.hematocrit}. In your report, refer to the patient's lab values using THEIR units (the first value shown for each lab above); the US-standard equivalents in parentheses are only for your reference-range comparison. When you cite a target or reference range, also express it in the patient's units so they can compare directly. Approximate conversions: Total T nmol/L = ng/dL x 0.0347; Free T pmol/L = pg/mL x 3.47 and 1 ng/dL = 10 pg/mL; Estradiol pmol/L = pg/mL x 3.67; Hematocrit L/L = % x 0.01.`
+      : '';
+
     const userPrompt = `Analyze my TRT results:
 - Injection Frequency: ${formData.injectionFrequency}
 - Blood Test Timing: ${formData.bloodTestTiming}
-- Total Testosterone: ${formData.labs.totalTestosterone || 'N/A'} ng/dL
-- Free Testosterone: ${formData.labs.freeTestosterone} pg/mL
-- Estradiol (Sensitive): ${formData.labs.estradiol} pg/mL
-- Hematocrit: ${formData.labs.hematocrit} %
-- Current Symptoms: ${formData.symptoms.join(', ')}`;
+${labLine('Total Testosterone', 'totalTestosterone')}
+${labLine('Free Testosterone', 'freeTestosterone')}
+${labLine('Estradiol (Sensitive)', 'estradiol')}
+${labLine('Hematocrit', 'hematocrit')}
+- Current Symptoms: ${formData.symptoms.join(', ')}${unitInstruction}`;
 
     console.log("Sending request to Gemini API...");
 
