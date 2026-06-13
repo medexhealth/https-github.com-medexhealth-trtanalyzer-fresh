@@ -13,6 +13,41 @@ const BloodTestTiming = {
   TROUGH: 'Trough (day of next injection, before injecting)',
   UNSURE: 'Unsure',
 };
+// --- LAB UNITS (international support) ---
+const LAB_UNITS = {
+  totalTestosterone: { canonical: 'ng/dL', options: ['ng/dL', 'nmol/L'] },
+  freeTestosterone: { canonical: 'pg/mL', options: ['pg/mL', 'ng/dL', 'pmol/L'] },
+  estradiol: { canonical: 'pg/mL', options: ['pg/mL', 'pmol/L'] },
+  hematocrit: { canonical: '%', options: ['%', 'L/L'] },
+};
+const DEFAULT_UNITS = {
+  totalTestosterone: 'ng/dL',
+  freeTestosterone: 'pg/mL',
+  estradiol: 'pg/mL',
+  hematocrit: '%',
+};
+// Convert a patient-entered value (in their chosen unit) to the US canonical unit the analyzer expects.
+const toCanonicalUS = (key, value, unit) => {
+  if (value === '' || value === null || value === undefined) return value;
+  const n = parseFloat(value);
+  if (isNaN(n)) return value;
+  let out = n;
+  if (key === 'totalTestosterone' && unit === 'nmol/L') out = n * 28.85;      // -> ng/dL
+  else if (key === 'freeTestosterone' && unit === 'ng/dL') out = n * 10;      // -> pg/mL
+  else if (key === 'freeTestosterone' && unit === 'pmol/L') out = n * 0.2885; // -> pg/mL
+  else if (key === 'estradiol' && unit === 'pmol/L') out = n / 3.671;         // -> pg/mL
+  else if (key === 'hematocrit' && unit === 'L/L') out = n * 100;             // -> %
+  return Math.round(out * 100) / 100;
+};
+// Build the request payload: US-canonical labs for analysis + original values/units so the report echoes the patient's units.
+const buildAnalysisPayload = (formData) => {
+  const units = formData.units || DEFAULT_UNITS;
+  const canonicalLabs = {};
+  Object.keys(formData.labs).forEach((k) => {
+    canonicalLabs[k] = toCanonicalUS(k, formData.labs[k], units[k] || DEFAULT_UNITS[k]);
+  });
+  return { formData: { ...formData, labs: canonicalLabs }, units, displayLabs: formData.labs };
+};
 // --- ANALYTICS ---
 const trackEvent = (eventName, properties = {}) => {
   console.log(`[Analytics] Event: ${eventName}`, properties);
@@ -28,7 +63,7 @@ const analyzeLabResults = async (formData, maxRetries = 3) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ formData }),
+        body: JSON.stringify(buildAnalysisPayload(formData)),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -263,6 +298,7 @@ const App = () => {
         injectionFrequency: '',
         bloodTestTiming: '',
         labs: { totalTestosterone: '', freeTestosterone: '', estradiol: '', hematocrit: '' },
+        units: { totalTestosterone: 'ng/dL', freeTestosterone: 'pg/mL', estradiol: 'pg/mL', hematocrit: '%' },
         symptoms: [],
     });
     const [analysisResult, setAnalysisResult] = useState('');
@@ -402,6 +438,7 @@ const App = () => {
     const handleNext = () => currentStep < TOTAL_STEPS && setCurrentStep(currentStep + 1);
     const handleBack = () => currentStep > 1 && setCurrentStep(currentStep - 1);
     const handleLabChange = (e) => setFormData(prev => ({ ...prev, labs: { ...prev.labs, [e.target.name]: e.target.value } }));
+    const handleUnitChange = (key, unit) => setFormData(prev => ({ ...prev, units: { ...(prev.units || DEFAULT_UNITS), [key]: unit } }));
     const handleFrequencyChange = (e) => setFormData(prev => ({ ...prev, injectionFrequency: e.target.value }));
     const handleTimingChange = (e) => setFormData(prev => ({ ...prev, bloodTestTiming: e.target.value }));
     const handleSymptomChange = (symptoms) => setFormData(prev => ({ ...prev, symptoms }));
@@ -434,6 +471,7 @@ const App = () => {
         setAppState('AWAITING_PAYMENT');
     };
     const renderContent = () => {
+        const U = formData.units || DEFAULT_UNITS;
         switch (appState) {
             case 'INTRO':
                 return (
@@ -488,22 +526,42 @@ const App = () => {
                             {currentStep === 2 && (
                                 <div className="animate-slide-up">
                                     <h2 className="text-2xl font-bold text-cyan-400 mb-1">Your Lab Results</h2>
-                                    <p className="text-gray-400 mb-6">Enter your most recent bloodwork values.</p>
+                                    <p className="text-gray-400 mb-6">Enter your most recent bloodwork values. Pick the units shown on your lab report.</p>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
                                         <div>
-                                            <label htmlFor="totalTestosterone" className="block text-sm font-medium text-gray-300 mb-2">Total T <span className="text-gray-500">(ng/dL)</span></label>
-                                            <input type="number" min="0" name="totalTestosterone" id="totalTestosterone" value={formData.labs.totalTestosterone} onChange={handleLabChange} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" placeholder="e.g., 850" />
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label htmlFor="totalTestosterone" className="block text-sm font-medium text-gray-300">Total T</label>
+                                                <select aria-label="Total T units" value={U.totalTestosterone} onChange={(e) => handleUnitChange('totalTestosterone', e.target.value)} className="bg-gray-800/70 border border-gray-700 text-gray-300 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500">
+                                                    {LAB_UNITS.totalTestosterone.options.map(o => <option key={o} value={o}>{o}</option>)}
+                                                </select>
+                                            </div>
+                                            <input type="number" min="0" name="totalTestosterone" id="totalTestosterone" value={formData.labs.totalTestosterone} onChange={handleLabChange} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" placeholder="optional" />
                                         </div>
                                         <div>
-                                            <label htmlFor="freeTestosterone" className="block text-sm font-medium text-gray-300 mb-2">Free T <span className="text-gray-500">(pg/mL) - Required</span></label>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label htmlFor="freeTestosterone" className="block text-sm font-medium text-gray-300">Free T <span className="text-gray-500">(required)</span></label>
+                                                <select aria-label="Free T units" value={U.freeTestosterone} onChange={(e) => handleUnitChange('freeTestosterone', e.target.value)} className="bg-gray-800/70 border border-gray-700 text-gray-300 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500">
+                                                    {LAB_UNITS.freeTestosterone.options.map(o => <option key={o} value={o}>{o}</option>)}
+                                                </select>
+                                            </div>
                                             <input type="number" min="0" name="freeTestosterone" id="freeTestosterone" value={formData.labs.freeTestosterone} onChange={handleLabChange} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" placeholder="e.g., 25.5" required />
                                         </div>
                                         <div>
-                                            <label htmlFor="estradiol" className="block text-sm font-medium text-gray-300 mb-2">Estradiol <span className="text-gray-500">(pg/mL) - Required</span></label>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label htmlFor="estradiol" className="block text-sm font-medium text-gray-300">Estradiol <span className="text-gray-500">(required)</span></label>
+                                                <select aria-label="Estradiol units" value={U.estradiol} onChange={(e) => handleUnitChange('estradiol', e.target.value)} className="bg-gray-800/70 border border-gray-700 text-gray-300 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500">
+                                                    {LAB_UNITS.estradiol.options.map(o => <option key={o} value={o}>{o}</option>)}
+                                                </select>
+                                            </div>
                                             <input type="number" min="0" name="estradiol" id="estradiol" value={formData.labs.estradiol} onChange={handleLabChange} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" placeholder="e.g., 35" required />
                                         </div>
                                         <div>
-                                            <label htmlFor="hematocrit" className="block text-sm font-medium text-gray-300 mb-2">Hematocrit <span className="text-gray-500">(%) - Required</span></label>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label htmlFor="hematocrit" className="block text-sm font-medium text-gray-300">Hematocrit <span className="text-gray-500">(required)</span></label>
+                                                <select aria-label="Hematocrit units" value={U.hematocrit} onChange={(e) => handleUnitChange('hematocrit', e.target.value)} className="bg-gray-800/70 border border-gray-700 text-gray-300 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500">
+                                                    {LAB_UNITS.hematocrit.options.map(o => <option key={o} value={o}>{o}</option>)}
+                                                </select>
+                                            </div>
                                             <input type="number" min="0" name="hematocrit" id="hematocrit" value={formData.labs.hematocrit} onChange={handleLabChange} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" placeholder="e.g., 48.5" required />
                                         </div>
                                     </div>
