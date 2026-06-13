@@ -243,6 +243,16 @@ const SymptomsSelector = ({ selectedSymptoms, onChange }) => {
         </div>
     );
 };
+// --- A/B TEST: card-timing (A = pay after details [control], B = pay first) ---
+const AB_CARD_TIMING = (() => {
+  try {
+    const p = new URLSearchParams(window.location.search).get('v');
+    if (p === 'A' || p === 'B') { localStorage.setItem('ab_cardtiming', p); return p; }
+    let v = localStorage.getItem('ab_cardtiming');
+    if (v !== 'A' && v !== 'B') { v = Math.random() < 0.5 ? 'A' : 'B'; localStorage.setItem('ab_cardtiming', v); }
+    return v;
+  } catch (e) { return 'A'; }
+})();
 // --- MAIN APP COMPONENT ---
 const App = () => {
     const [appState, setAppState] = useState('INTRO');
@@ -270,6 +280,7 @@ const App = () => {
     const [analyzingText, setAnalyzingText] = useState(analyzingMessages[0]);
     const TOTAL_STEPS = 3;
     const PAYMENT_URL = 'https://buy.stripe.com/14AfZid6xgVhfCRa6d2Fa02';
+    const PAYMENT_URL_TAGGED = `${PAYMENT_URL}${PAYMENT_URL.includes('?') ? '&' : '?'}client_reference_id=ct_${AB_CARD_TIMING}`;
     const BYPASS_CODES = [
       { code: 'DRTNOV25', expiry: new Date('2026-06-01').getTime() },
       { code: 'DRTCOMP', expiry: new Date('2026-06-01').getTime() },
@@ -350,8 +361,13 @@ const App = () => {
                     const updatedSession = { ...session, paymentConfirmed: true };
                     localStorage.setItem('analysisSession', JSON.stringify(updatedSession));
                     setAnalysisSession(updatedSession);
-                    setFormData(updatedSession.formData);
-                    runAnalysis(updatedSession.formData, updatedSession);
+                    if (updatedSession.formData) {
+                        setFormData(updatedSession.formData);
+                        runAnalysis(updatedSession.formData, updatedSession);
+                    } else {
+                        // Variant B: paid before entering details -- collect them now
+                        setAppState('FORM');
+                    }
                     return;
                 }
             } catch (e) {
@@ -368,6 +384,9 @@ const App = () => {
                     if (session.result) {
                         setAnalysisResult(session.result);
                         setAppState('RESULT');
+                    } else if (session.paymentConfirmed && !session.formData) {
+                        // Variant B: already paid, still needs to enter details
+                        setAppState('FORM');
                     } else {
                         setAppState('AWAITING_PAYMENT');
                     }
@@ -393,7 +412,16 @@ const App = () => {
             return;
         }
         setError('');
-        trackEvent('analysis_attempt');
+        trackEvent('analysis_attempt', { ab_variant: AB_CARD_TIMING });
+
+        // Variant B (pay-first): payment already confirmed -- run analysis now.
+        if (analysisSession && analysisSession.paymentConfirmed) {
+            const updatedSession = { ...analysisSession, formData };
+            setAnalysisSession(updatedSession);
+            localStorage.setItem('analysisSession', JSON.stringify(updatedSession));
+            runAnalysis(formData, updatedSession);
+            return;
+        }
 
         const newSession = {
             token: crypto.randomUUID(),
@@ -412,7 +440,17 @@ const App = () => {
                     <div className="text-center animate-fade-in">
                         <h1 className="text-4xl sm:text-5xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-blue-500 mb-4">TRT Lab Analyzer</h1>
                         <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">Get an AI-powered analysis of your TRT lab results. A one-time payment unlocks your personalized report, designed to help you prepare for a discussion with your doctor. This is not medical advice.</p>
-                        <button onClick={() => { setAppState('FORM'); trackEvent('start_analysis_clicked'); }} className="group relative inline-flex items-center justify-center px-8 py-3 text-lg font-bold text-white bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-lg shadow-lg hover:shadow-cyan-500/50 transition-shadow duration-300">
+                        <button onClick={() => {
+                            trackEvent('start_analysis_clicked', { ab_variant: AB_CARD_TIMING });
+                            if (AB_CARD_TIMING === 'B') {
+                                const newSession = { token: crypto.randomUUID(), expiry: Date.now() + 7 * 24 * 60 * 60 * 1000, paymentConfirmed: false, formData: null };
+                                setAnalysisSession(newSession);
+                                localStorage.setItem('analysisSession', JSON.stringify(newSession));
+                                setAppState('AWAITING_PAYMENT');
+                            } else {
+                                setAppState('FORM');
+                            }
+                        }} className="group relative inline-flex items-center justify-center px-8 py-3 text-lg font-bold text-white bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-lg shadow-lg hover:shadow-cyan-500/50 transition-shadow duration-300">
                             <SparklesIcon className="w-6 h-6 mr-3 transform transition-transform duration-300 group-hover:rotate-12" />
                             Start Analysis & Get Report
                         </button>
@@ -501,10 +539,10 @@ const App = () => {
                         <div className="bg-gray-900/50 backdrop-blur-xl p-8 rounded-lg shadow-2xl border border-cyan-500/20">
                             <ShieldCheckIcon className="w-16 h-16 mx-auto text-cyan-400 animate-pulse-icon mb-4" />
                             <h2 className="text-2xl font-bold text-cyan-400 mb-2">One-Time Secure Payment</h2>
-                            <p className="text-gray-400 mb-6">Your comprehensive lab analysis is ready. A one-time fee of $8.99 unlocks your personalized report.</p>
+                            <p className="text-gray-400 mb-6">{analysisSession && !analysisSession.formData ? "Unlock your personalized analysis for a one-time fee of $8.99. Next, you\u2019ll enter your lab values and symptoms to generate your report." : "Your comprehensive lab analysis is ready. A one-time fee of $8.99 unlocks your personalized report."}</p>
 
                             {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm text-left">{error}</div>}
-                            <a href={PAYMENT_URL} onClick={() => trackEvent('proceed_to_payment')} className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-500 transition-all duration-300 transform hover:scale-105">
+                            <a href={PAYMENT_URL_TAGGED} onClick={() => trackEvent('proceed_to_payment', { ab_variant: AB_CARD_TIMING })} className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-500 transition-all duration-300 transform hover:scale-105">
                                 <CreditCardIcon className="w-6 h-6" /> Pay Now & Get Report
                             </a>
                             <div className="mt-6 pt-6 border-t border-gray-700/50">
@@ -544,8 +582,12 @@ const App = () => {
                                                             const updatedSession = { ...session, paymentConfirmed: true };
                                                             localStorage.setItem('analysisSession', JSON.stringify(updatedSession));
                                                             setAnalysisSession(updatedSession);
-                                                            setFormData(updatedSession.formData);
-                                                            runAnalysis(updatedSession.formData, updatedSession);
+                                                            if (updatedSession.formData) {
+                                                                setFormData(updatedSession.formData);
+                                                                runAnalysis(updatedSession.formData, updatedSession);
+                                                            } else {
+                                                                setAppState('FORM');
+                                                            }
                                                         } catch (e) {
                                                             setError('Something went wrong. Please try again.');
                                                         }
@@ -564,8 +606,12 @@ const App = () => {
                                                         const updatedSession = { ...session, paymentConfirmed: true };
                                                         localStorage.setItem('analysisSession', JSON.stringify(updatedSession));
                                                         setAnalysisSession(updatedSession);
-                                                        setFormData(updatedSession.formData);
-                                                        runAnalysis(updatedSession.formData, updatedSession);
+                                                        if (updatedSession.formData) {
+                                                            setFormData(updatedSession.formData);
+                                                            runAnalysis(updatedSession.formData, updatedSession);
+                                                        } else {
+                                                            setAppState('FORM');
+                                                        }
                                                     } catch (e) {
                                                         setError('Something went wrong. Please try again.');
                                                     }
