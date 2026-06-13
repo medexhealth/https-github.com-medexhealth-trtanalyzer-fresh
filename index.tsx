@@ -283,9 +283,9 @@ const AB_CARD_TIMING = (() => {
   try {
     const p = new URLSearchParams(window.location.search).get('v');
     if (p === 'A' || p === 'B') { localStorage.setItem('ab_cardtiming', p); return p; }
-    const v = localStorage.getItem('ab_cardtiming');
-    if (v === 'A' || v === 'B') return v;
-    return 'A'; // default = control; the 50/50 split is assigned on the marketing page via ?v=
+    let v = localStorage.getItem('ab_cardtiming');
+    if (v !== 'A' && v !== 'B') { v = Math.random() < 0.5 ? 'A' : 'B'; localStorage.setItem('ab_cardtiming', v); } // 50/50 split is now LIVE
+    return v;
   } catch (e) { return 'A'; }
 })();
 // --- MAIN APP COMPONENT ---
