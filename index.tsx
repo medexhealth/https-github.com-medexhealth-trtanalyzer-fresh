@@ -48,10 +48,26 @@ const buildAnalysisPayload = (formData) => {
   });
   return { formData: { ...formData, labs: canonicalLabs }, units, displayLabs: formData.labs };
 };
-// --- ANALYTICS ---
+// --- ANALYTICS (Google Analytics 4) ---
+// Loads gtag.js itself so no index.html change is needed.
+(function loadGA4() {
+  if (typeof window === 'undefined' || (window as any).__ga4Loaded) return;
+  (window as any).__ga4Loaded = true;
+  const s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=G-YETQBRMWSM';
+  document.head.appendChild(s);
+  (window as any).dataLayer = (window as any).dataLayer || [];
+  (window as any).gtag = function gtag() { (window as any).dataLayer.push(arguments); };
+  (window as any).gtag('js', new Date());
+  (window as any).gtag('config', 'G-YETQBRMWSM');
+})();
 const trackEvent = (eventName, properties = {}) => {
   console.log(`[Analytics] Event: ${eventName}`, properties);
-  // In a real-world scenario, this would send data to an analytics service like Google Analytics, PostHog, etc.
+  // Send to Google Analytics 4 (gtag loaded above). No-op if gtag isn't present.
+  if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
+    (window as any).gtag('event', eventName, properties);
+  }
 };
 // --- SECURE ANALYSIS SERVICE ---
 const analyzeLabResults = async (formData, maxRetries = 3) => {
@@ -167,6 +183,35 @@ const Markdown = ({ content }) => {
     if (inList) { html += '</ul>'; }
     return <div className="space-y-2" dangerouslySetInnerHTML={{ __html: html }} />;
 };
+const FeedbackWidget = () => {
+    const [rating, setRating] = useState(null);
+    const [comment, setComment] = useState('');
+    const [sent, setSent] = useState(false);
+    const choose = (r) => {
+        setRating(r);
+        trackEvent('feedback_rating', { rating: r, ab_variant: AB_CARD_TIMING });
+    };
+    const submit = () => {
+        trackEvent('feedback_comment', { rating, comment: comment.slice(0, 500), ab_variant: AB_CARD_TIMING });
+        setSent(true);
+    };
+    if (sent) return <p className="mt-6 text-center text-sm text-green-400">Thanks — your feedback helps improve the analyzer.</p>;
+    return (
+        <div className="mt-6 p-4 rounded-lg border border-cyan-500/20 bg-gray-900/40 text-center">
+            <p className="text-sm text-gray-300 mb-3">Was this analysis helpful?</p>
+            <div className="flex items-center justify-center gap-3">
+                <button onClick={() => choose('up')} className={`px-4 py-2 rounded-lg border transition ${rating === 'up' ? 'border-green-400 text-green-300 bg-green-500/10' : 'border-gray-600 text-gray-300 hover:bg-gray-700/50'}`}>👍 Yes</button>
+                <button onClick={() => choose('down')} className={`px-4 py-2 rounded-lg border transition ${rating === 'down' ? 'border-red-400 text-red-300 bg-red-500/10' : 'border-gray-600 text-gray-300 hover:bg-gray-700/50'}`}>👎 No</button>
+            </div>
+            {rating && (
+                <div className="mt-3">
+                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Anything we could do better? (optional)" rows={2} className="w-full max-w-md mx-auto block bg-gray-800/70 border border-gray-600 rounded-lg p-2 text-sm text-gray-200" />
+                    <button onClick={submit} className="mt-2 px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg">Send feedback</button>
+                </div>
+            )}
+        </div>
+    );
+};
 const ResultDisplay = ({ result, onReset }) => {
     const [copied, setCopied] = useState(false);
     const handleCopy = () => {
@@ -214,6 +259,7 @@ const ResultDisplay = ({ result, onReset }) => {
                     <Markdown content={result} />
                 </div>
             </div>
+            <FeedbackWidget />
             <div className="mt-6 text-center">
                 <button
                     onClick={onReset}
@@ -315,11 +361,12 @@ const App = () => {
     ];
     const [analyzingText, setAnalyzingText] = useState(analyzingMessages[0]);
     const TOTAL_STEPS = 3;
-    const PAYMENT_URL = 'https://buy.stripe.com/14AfZid6xgVhfCRa6d2Fa02';
+    const PAYMENT_URL = 'https://buy.stripe.com/5kQ8wQ2rTawTcqFemt2Fa03';
     const PAYMENT_URL_TAGGED = `${PAYMENT_URL}${PAYMENT_URL.includes('?') ? '&' : '?'}client_reference_id=ct_${AB_CARD_TIMING}`;
     const BYPASS_CODES = [
       { code: 'DRTNOV25', expiry: new Date('2026-06-01').getTime() },
       { code: 'DRTCOMP', expiry: new Date('2026-06-01').getTime() },
+      { code: 'DRTREVIEW', expiry: new Date('2027-12-31').getTime() },
     ];
     const endSessionAndReset = useCallback(() => {
         localStorage.removeItem('analysisSession');
@@ -389,7 +436,7 @@ const App = () => {
         const storedSessionJSON = localStorage.getItem('analysisSession');
         if (stripeSessionId?.startsWith('cs_') && storedSessionJSON) {
             setAppState('VERIFYING_PAYMENT');
-            trackEvent('purchase_completed', { stripe_session_id: stripeSessionId });
+            trackEvent('purchase_completed', { stripe_session_id: stripeSessionId, ab_variant: AB_CARD_TIMING, value: 16.99, currency: 'USD' });
             window.history.replaceState({}, document.title, window.location.pathname);
             try {
                 const session = JSON.parse(storedSessionJSON);
@@ -597,7 +644,7 @@ const App = () => {
                         <div className="bg-gray-900/50 backdrop-blur-xl p-8 rounded-lg shadow-2xl border border-cyan-500/20">
                             <ShieldCheckIcon className="w-16 h-16 mx-auto text-cyan-400 animate-pulse-icon mb-4" />
                             <h2 className="text-2xl font-bold text-cyan-400 mb-2">One-Time Secure Payment</h2>
-                            <p className="text-gray-400 mb-6">{analysisSession && !analysisSession.formData ? "Unlock your personalized analysis for a one-time fee of $8.99. Next, you\u2019ll enter your lab values and symptoms to generate your report." : "Your comprehensive lab analysis is ready. A one-time fee of $8.99 unlocks your personalized report."}</p>
+                            <p className="text-gray-400 mb-6">{analysisSession && !analysisSession.formData ? "Unlock your personalized analysis for a one-time fee of $16.99. Next, you\u2019ll enter your lab values and symptoms to generate your report." : "Your comprehensive lab analysis is ready. A one-time fee of $16.99 unlocks your personalized report."}</p>
 
                             {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm text-left">{error}</div>}
                             <a href={PAYMENT_URL_TAGGED} onClick={() => trackEvent('proceed_to_payment', { ab_variant: AB_CARD_TIMING })} className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-500 transition-all duration-300 transform hover:scale-105">
