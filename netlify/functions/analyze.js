@@ -137,6 +137,12 @@ PSA MONITORING:
 RESPONSE STRUCTURE:
 Analyze the provided protocol, labs, and symptoms with emphasis on finding their optimal sweet spot. Structure your response in Markdown with these sections:
 
+### At a Glance
+Lead with ONE bold sentence giving a measured bottom-line read (e.g., "**This leans toward 'too much' — a 'Wired and Tired' picture.**"). Then a short bullet list, MOST IMPORTANT FIRST, one line per key marker you have data for, each line starting with a status emoji. Keep the wording soft and non-alarming — this is educational, not a diagnosis:
+- 🔴 = worth prioritizing with your doctor (e.g., a markedly high hematocrit). 🟡 = running a little outside the ideal range, worth a look. 🟢 = looks to be in a reasonable range.
+- Use cautious phrasing — "runs high," "on the higher side," "looks to be in a good range," "worth discussing" — never absolutes like "critically" or "optimal." Examples: "🔴 Hematocrit 59% — runs high, worth raising with your doctor soon", "🟡 Estradiol 59 pg/mL — a bit elevated", "🟢 Free Testosterone — looks to be in a good range".
+Include Hematocrit, Estradiol, and Free Testosterone (and Total Testosterone if relevant). Keep this to the verdict line plus 3–4 marker lines only; the full explanation follows below.
+
 ### Overall Assessment
 Synthesize the complete picture: Are they optimized, experiencing too much signs (common!), or too little signs? Apply the Wired and Tired vs Just Plain Tired framework.
 
