@@ -166,21 +166,27 @@ const ArrowPathIcon = (props) => (
 const Markdown = ({ content }) => {
     const lines = content.split('\n');
     let html = '';
-    let inList = false;
+    let listType = null; // 'ul' | 'ol' | null
     const processInline = (text) => text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    for (const line of lines) {
-        if (line.trim().startsWith('### ')) {
-            if (inList) { html += '</ul>'; inList = false; }
-            html += `<h3 class="text-xl font-bold text-cyan-400 mt-6 mb-3">${processInline(line.trim().substring(4))}</h3>`;
-        } else if (line.trim().startsWith('- ')) {
-            if (!inList) { html += '<ul class="space-y-2 mt-2 list-outside">'; inList = true; }
-            html += `<li class="ml-5 list-disc">${processInline(line.trim().substring(2))}</li>`;
-        } else if (line.trim().length > 0) {
-            if (inList) { html += '</ul>'; inList = false; }
-            html += `<p>${processInline(line.trim())}</p>`;
+    const closeList = () => { if (listType) { html += listType === 'ol' ? '</ol>' : '</ul>'; listType = null; } };
+    for (const raw of lines) {
+        const line = raw.trim();
+        const numMatch = line.match(/^(\d+)\.\s+(.*)/);
+        if (line.startsWith('### ')) {
+            closeList();
+            html += `<h3 class="text-xl font-bold text-cyan-400 mt-6 mb-3">${processInline(line.substring(4))}</h3>`;
+        } else if (line.startsWith('- ')) {
+            if (listType !== 'ul') { closeList(); html += '<ul class="space-y-2 mt-2 list-outside">'; listType = 'ul'; }
+            html += `<li class="ml-5 list-disc">${processInline(line.substring(2))}</li>`;
+        } else if (numMatch) {
+            if (listType !== 'ol') { closeList(); html += '<ol class="space-y-2 mt-2 list-outside list-decimal">'; listType = 'ol'; }
+            html += `<li class="ml-5">${processInline(numMatch[2])}</li>`;
+        } else if (line.length > 0) {
+            closeList();
+            html += `<p>${processInline(line)}</p>`;
         }
     }
-    if (inList) { html += '</ul>'; }
+    closeList();
     return <div className="space-y-2" dangerouslySetInnerHTML={{ __html: html }} />;
 };
 const FeedbackWidget = () => {
@@ -215,7 +221,7 @@ const FeedbackWidget = () => {
 const ResultDisplay = ({ result, onReset }) => {
     const [copied, setCopied] = useState(false);
     const handleCopy = () => {
-        const guideTitle = "### Your Personalized Doctor Discussion Guide";
+        const guideTitle = "### Doctor Discussion Guide";
         const disclaimerTitle = "### Important Disclaimer";
         const startIndex = result.indexOf(guideTitle);
 
