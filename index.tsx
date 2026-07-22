@@ -427,6 +427,11 @@ const App = () => {
         trackEvent('page_view');
     }, []);
     useEffect(() => {
+        if (appState === 'FORM') {
+            trackEvent('form_step_viewed', { step: currentStep, ab_variant: AB_CARD_TIMING });
+        }
+    }, [appState, currentStep]);
+    useEffect(() => {
         if (appState === 'ANALYZING') {
             let messageIndex = 0;
             const intervalId = setInterval(() => {
@@ -530,7 +535,8 @@ const App = () => {
                 return (
                     <div className="text-center animate-fade-in">
                         <h1 className="text-4xl sm:text-5xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-blue-500 mb-4">TRT Lab Analyzer</h1>
-                        <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">Get an AI-powered analysis of your TRT lab results. A one-time payment unlocks your personalized report, designed to help you prepare for a discussion with your doctor. This is not medical advice.</p>
+                        <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3">Get an AI-powered analysis of your TRT lab results. A one-time payment unlocks your personalized report, designed to help you prepare for a discussion with your doctor. This is not medical advice.</p>
+                        <p className="text-sm text-cyan-300 max-w-xl mx-auto mb-8">Have your most recent testosterone panel handy — you’ll enter your Free T, Estradiol, and Hematocrit values. Takes about 2 minutes.</p>
                         <button onClick={() => {
                             trackEvent('start_analysis_clicked', { ab_variant: AB_CARD_TIMING });
                             if (AB_CARD_TIMING === 'B') {
