@@ -59,6 +59,13 @@
   </head>
   <body>
     <div id="root"></div>
+    <form name="feedback" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="feedback" />
+      <input type="text" name="rating" />
+      <textarea name="comment"></textarea>
+      <input type="text" name="variant" />
+      <input type="text" name="bot-field" />
+    </form>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
