@@ -199,7 +199,7 @@ const FeedbackWidget = () => {
     };
     const submit = () => {
         trackEvent('feedback_comment', { rating, comment: comment.slice(0, 500), ab_variant: AB_CARD_TIMING });
-        setSent(true);
+        try { const body = new URLSearchParams({ 'form-name': 'feedback', rating: rating || '', comment: comment.slice(0, 1000), variant: AB_CARD_TIMING }).toString(); fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body }); } catch (e) {} setSent(true);
     };
     if (sent) return <p className="mt-6 text-center text-sm text-green-400">Thanks — your feedback helps improve the analyzer.</p>;
     return (
@@ -211,8 +211,9 @@ const FeedbackWidget = () => {
             </div>
             {rating && (
                 <div className="mt-3">
-                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Anything we could do better? (optional)" rows={2} className="w-full max-w-md mx-auto block bg-gray-800/70 border border-gray-600 rounded-lg p-2 text-sm text-gray-200" />
-                    <button onClick={submit} className="mt-2 px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg">Send feedback</button>
+                    <p className="text-sm text-cyan-200 mb-2">{rating === 'up' ? 'Glad it helped! What was most useful — or what would make it even better?' : 'Sorry it missed the mark — tell me what was off or what you needed. I read every note.'}</p>
+                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Type your note here — it goes straight to Dr. Terranella." rows={3} autoFocus className="w-full max-w-md mx-auto block bg-gray-800/70 border border-cyan-600/40 rounded-lg p-3 text-sm text-gray-200" />
+                    <button onClick={submit} className="mt-2 px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg">Send to Dr. T →</button>
                 </div>
             )}
         </div>
@@ -554,6 +555,15 @@ const App = () => {
             case 'FORM':
                 return (
                     <div className="w-full max-w-2xl mx-auto animate-fade-in">
+                        <div className="max-w-md mx-auto mb-4">
+                          <div className="flex justify-between items-center mb-1.5">
+                            <span className="text-xs text-cyan-300 font-medium">Step {currentStep} of {TOTAL_STEPS}</span>
+                            <span className="text-xs text-cyan-200">{currentStep === TOTAL_STEPS ? 'Last step — almost done!' : currentStep === TOTAL_STEPS - 1 ? 'Almost there' : 'Just a few quick questions'}</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-gray-700/60 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-300" style={{ width: ((currentStep / TOTAL_STEPS) * 100) + '%' }} />
+                          </div>
+                        </div>
                         <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
                         <div className="bg-gray-900/50 backdrop-blur-xl p-6 sm:p-8 rounded-lg shadow-2xl border border-cyan-500/20">
                             {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm">{error}</div>}
