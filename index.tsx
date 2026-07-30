@@ -334,10 +334,8 @@ const SymptomsSelector = ({ selectedSymptoms, onChange }) => {
 const AB_CARD_TIMING = (() => {
   try {
     const p = new URLSearchParams(window.location.search).get('v');
-    if (p === 'A' || p === 'B') { localStorage.setItem('ab_cardtiming', p); return p; }
-    let v = localStorage.getItem('ab_cardtiming');
-    if (v !== 'A' && v !== 'B') { v = Math.random() < 0.5 ? 'A' : 'B'; localStorage.setItem('ab_cardtiming', v); } // 50/50 split is now LIVE
-    return v;
+    if (p === 'A' || p === 'B') { return p; } // manual preview override only, not persisted
+    return 'A'; // Variant A (pay-second) locked in as winner — was a 50/50 A/B split
   } catch (e) { return 'A'; }
 })();
 // --- MAIN APP COMPONENT ---
