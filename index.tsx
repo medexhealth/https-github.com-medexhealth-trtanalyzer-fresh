@@ -468,12 +468,21 @@ const App = () => {
                 setAppState('AWAITING_PAYMENT');
             }
         }
+        else if (stripeSessionId?.startsWith('cs_')) {
+            // Paid on Stripe but no saved session in this browser (different device, incognito, or checkout retry).
+            trackEvent('purchase_completed', { stripe_session_id: stripeSessionId, ab_variant: AB_CARD_TIMING, value: 16.99, currency: 'USD', recovered: 'no_session' });
+            window.history.replaceState({}, document.title, window.location.pathname);
+            const rescueSession = { token: crypto.randomUUID(), expiry: Date.now() + 7 * 24 * 60 * 60 * 1000, paymentConfirmed: true, formData: null };
+            localStorage.setItem('analysisSession', JSON.stringify(rescueSession));
+            setAnalysisSession(rescueSession);
+            setAppState('FORM');
+        }
         else if (storedSessionJSON) {
             try {
                 const session = JSON.parse(storedSessionJSON);
                 if (session.expiry > Date.now()) {
                     setAnalysisSession(session);
-                    setFormData(session.formData);
+                    if (session.formData) setFormData(session.formData);
                     if (session.result) {
                         setAnalysisResult(session.result);
                         setAppState('RESULT');
@@ -566,6 +575,7 @@ const App = () => {
                         </div>
                         <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
                         <div className="bg-gray-900/50 backdrop-blur-xl p-6 sm:p-8 rounded-lg shadow-2xl border border-cyan-500/20">
+                            {analysisSession?.paymentConfirmed && !analysisResult && <div className="bg-green-500/20 text-green-300 border border-green-500/50 p-3 rounded-lg mb-6 text-sm">Payment received — enter your labs below to unlock your report.</div>}
                             {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm">{error}</div>}
 
                             {currentStep === 1 && (
