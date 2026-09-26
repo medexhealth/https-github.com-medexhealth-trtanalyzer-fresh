@@ -80,7 +80,7 @@ const analyzeLabResults = async (formData, maxRetries = 3) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(buildAnalysisPayload(formData)),
+        body: JSON.stringify({ ...buildAnalysisPayload(formData), paymentRef: (() => { try { return localStorage.getItem('paymentRef') || ''; } catch (e) { return ''; } })() }),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -94,6 +94,10 @@ const analyzeLabResults = async (formData, maxRetries = 3) => {
           if (lowerError.includes('safety settings')) {
             return "Error: The analysis was blocked by the AI's safety filter. This can happen with medical data. Please adjust your inputs and retry.";
           }
+        }
+
+        if (response.status === 402 || response.status === 503) {
+          return `Error: ${errorData.error || 'We could not verify your purchase. Please try again in a moment.'}`;
         }
 
         // If it's a 500 or 504 (timeout), retry
@@ -447,6 +451,7 @@ const App = () => {
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const stripeSessionId = urlParams.get('session_id');
+        if (stripeSessionId && stripeSessionId.startsWith('cs_')) { try { localStorage.setItem('paymentRef', stripeSessionId); } catch (e) {} }
         const storedSessionJSON = localStorage.getItem('analysisSession');
         if (stripeSessionId?.startsWith('cs_') && storedSessionJSON) {
             setAppState('VERIFYING_PAYMENT');
@@ -527,7 +532,6 @@ const App = () => {
             const hct = parseFloat(formData.labs.hematocrit);
             if (U0.totalTestosterone === 'ng/dL' && tt > 0 && tt < 60) warn.push('Total T of ' + tt + ' looks like nmol/L (UK/EU/Canada/Australia), not ng/dL');
             if (U0.freeTestosterone === 'pg/mL' && ft > 0 && ft < 2) warn.push('Free T of ' + ft + ' looks like nmol/L, not pg/mL');
-            if (U0.freeTestosterone === 'pg/mL' && ft > 150) warn.push('Free T of ' + ft + ' looks like pmol/L, not pg/mL');
             if (U0.estradiol === 'pg/mL' && e2 > 150) warn.push('Estradiol of ' + e2 + ' may be pmol/L, not pg/mL');
             if (U0.hematocrit === '%' && hct > 0 && hct < 1) warn.push('Hematocrit of ' + hct + ' looks like L/L (a fraction), not %');
             if (warn.length) {
@@ -733,6 +737,7 @@ const App = () => {
                                                         return;
                                                     }
                                                     trackEvent('payment_verified', { paymentId: trimmedCode });
+                                                    try { localStorage.setItem('paymentRef', trimmedCode); } catch (e) {}
                                                     const storedSessionJSON = localStorage.getItem('analysisSession');
                                                     if (storedSessionJSON) {
                                                         try {
