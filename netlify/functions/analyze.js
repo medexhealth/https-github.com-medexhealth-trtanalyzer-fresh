@@ -1,4 +1,77 @@
 import { GoogleGenAI } from "@google/genai";
+import Stripe from "stripe";
+
+// --- Strict purchase verification ---------------------------------------
+// Every analysis must be backed by a real, completed Stripe purchase made in
+// the last 7 days. Each purchase includes ANALYSIS_CAP analyses; the count is
+// stored on the Stripe payment itself (metadata.analyses_used). If Stripe
+// cannot be reached, the request is refused and the user is asked to retry.
+const ANALYSIS_CAP = 2;
+const PURCHASE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+const GATE_MESSAGES = {
+  missing: "We couldn’t find your purchase in this browser. If you’ve already paid, enter your Stripe receipt ID (it starts with pi_) in the “Already paid?” box, or email info@swintegrativemedicine.com and we’ll get you in.",
+  invalid: "We couldn’t verify that purchase. Please check your receipt ID (it starts with pi_) or email info@swintegrativemedicine.com.",
+  unpaid: "This payment hasn’t completed yet. Please finish checkout to run your analysis.",
+  expired: "This purchase is more than 7 days old. Please purchase a new analysis.",
+  cap: "You’ve used both analyses included with this purchase. Your report is still saved in this browser. To analyze a new set of labs, please purchase again.",
+  unavailable: "We couldn’t reach our payment system to verify your purchase. Please wait a minute and try again. You won’t be charged again."
+};
+
+async function verifyAndReservePurchase(paymentRef) {
+  const ref = typeof paymentRef === "string" ? paymentRef.trim() : "";
+  if (!/^(cs|pi)_[A-Za-z0-9_]+$/.test(ref)) return { ok: false, status: 402, reason: "missing" };
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    console.error("STRIPE_SECRET_KEY is not set - refusing analysis.");
+    return { ok: false, status: 503, reason: "unavailable" };
+  }
+  const stripe = new Stripe(key);
+  try {
+    let target;
+    let kind;
+    if (ref.startsWith("cs_")) {
+      const session = await stripe.checkout.sessions.retrieve(ref, { expand: ["payment_intent"] });
+      if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") {
+        return { ok: false, status: 402, reason: "unpaid" };
+      }
+      if (session.payment_intent && typeof session.payment_intent === "object") {
+        target = session.payment_intent;
+        kind = "pi";
+      } else {
+        target = session;
+        kind = "cs";
+      }
+    } else {
+      target = await stripe.paymentIntents.retrieve(ref);
+      kind = "pi";
+    }
+    if (kind === "pi" && target.status !== "succeeded") return { ok: false, status: 402, reason: "unpaid" };
+    if (Date.now() - target.created * 1000 > PURCHASE_WINDOW_MS) return { ok: false, status: 402, reason: "expired" };
+    const used = parseInt((target.metadata && target.metadata.analyses_used) || "0", 10) || 0;
+    if (used >= ANALYSIS_CAP) return { ok: false, status: 402, reason: "cap" };
+    const meta = { metadata: { analyses_used: String(used + 1) } };
+    if (kind === "pi") await stripe.paymentIntents.update(target.id, meta);
+    else await stripe.checkout.sessions.update(target.id, meta);
+    return { ok: true, stripe, kind, id: target.id, used };
+  } catch (e) {
+    if (e && (e.code === "resource_missing" || e.statusCode === 404)) return { ok: false, status: 402, reason: "invalid" };
+    console.error("Purchase verification error - refusing analysis:", e && e.message);
+    return { ok: false, status: 503, reason: "unavailable" };
+  }
+}
+
+// Gives the analysis back if the AI step fails after a purchase was counted.
+async function releaseReservation(p) {
+  if (!p || !p.ok || !p.stripe) return;
+  try {
+    const meta = { metadata: { analyses_used: String(p.used) } };
+    if (p.kind === "pi") await p.stripe.paymentIntents.update(p.id, meta);
+    else await p.stripe.checkout.sessions.update(p.id, meta);
+  } catch (e) {
+    console.error("Could not release analysis reservation:", e && e.message);
+  }
+}
 
 export const handler = async (event) => {
   // Add detailed logging for diagnostics
@@ -29,7 +102,17 @@ export const handler = async (event) => {
   }
 
   try {
-    const { formData, units, displayLabs } = JSON.parse(event.body);
+    const { formData, units, displayLabs, paymentRef } = JSON.parse(event.body);
+    var purchase = await verifyAndReservePurchase(paymentRef);
+    if (!purchase.ok) {
+      console.log("Purchase verification declined:", purchase.reason);
+      return {
+        statusCode: purchase.status,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ error: GATE_MESSAGES[purchase.reason] || GATE_MESSAGES.invalid }),
+      };
+    }
+    console.log("Purchase verified; analyses used before this one:", purchase.used);
     console.log("Successfully parsed formData from request body.");
 
     const ai = new GoogleGenAI({ apiKey });
@@ -242,6 +325,7 @@ ${labLine('Hematocrit', 'hematocrit')}
         console.warn("Empty response from Gemini API. Response:", JSON.stringify(response, null, 2));
         errorMessage = "The analysis returned an empty result. This could be a temporary issue with the AI service. Please try again in a moment.";
       }
+      await releaseReservation(purchase);
       return {
         statusCode: 500,
         body: JSON.stringify({ error: errorMessage }),
@@ -256,6 +340,7 @@ ${labLine('Hematocrit', 'hematocrit')}
     };
   } catch (error) {
     console.error("Error in Netlify function:", error);
+    await releaseReservation(purchase);
     // Provide a more specific error if it's an API communication issue.
     const errorMessage = error.message && error.message.toLowerCase().includes('api key')
       ? 'An API key issue was detected. Please check the server configuration.'
