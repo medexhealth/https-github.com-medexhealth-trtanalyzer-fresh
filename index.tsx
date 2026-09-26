@@ -16,7 +16,7 @@ const BloodTestTiming = {
 // --- LAB UNITS (international support) ---
 const LAB_UNITS = {
   totalTestosterone: { canonical: 'ng/dL', options: ['ng/dL', 'nmol/L'] },
-  freeTestosterone: { canonical: 'pg/mL', options: ['pg/mL', 'ng/dL', 'pmol/L'] },
+  freeTestosterone: { canonical: 'pg/mL', options: ['pg/mL', 'ng/dL', 'pmol/L', 'nmol/L'] },
   estradiol: { canonical: 'pg/mL', options: ['pg/mL', 'pmol/L'] },
   hematocrit: { canonical: '%', options: ['%', 'L/L'] },
 };
@@ -35,6 +35,7 @@ const toCanonicalUS = (key, value, unit) => {
   if (key === 'totalTestosterone' && unit === 'nmol/L') out = n * 28.85;      // -> ng/dL
   else if (key === 'freeTestosterone' && unit === 'ng/dL') out = n * 10;      // -> pg/mL
   else if (key === 'freeTestosterone' && unit === 'pmol/L') out = n * 0.2885; // -> pg/mL
+  else if (key === 'freeTestosterone' && unit === 'nmol/L') out = n * 288.5;  // -> pg/mL
   else if (key === 'estradiol' && unit === 'pmol/L') out = n / 3.671;         // -> pg/mL
   else if (key === 'hematocrit' && unit === 'L/L') out = n * 100;             // -> %
   return Math.round(out * 100) / 100;
@@ -192,6 +193,7 @@ const Markdown = ({ content }) => {
 const FeedbackWidget = () => {
     const [rating, setRating] = useState(null);
     const [comment, setComment] = useState('');
+    const [fbEmail, setFbEmail] = useState('');
     const [sent, setSent] = useState(false);
     const choose = (r) => {
         setRating(r);
@@ -199,7 +201,7 @@ const FeedbackWidget = () => {
     };
     const submit = () => {
         trackEvent('feedback_comment', { rating, comment: comment.slice(0, 500), ab_variant: AB_CARD_TIMING });
-        try { const body = new URLSearchParams({ 'form-name': 'feedback', rating: rating || '', comment: comment.slice(0, 1000), variant: AB_CARD_TIMING }).toString(); fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body }); } catch (e) {} setSent(true);
+        try { const body = new URLSearchParams({ 'form-name': 'feedback', rating: rating || '', comment: comment.slice(0, 1000), email: fbEmail.trim().slice(0, 200), variant: AB_CARD_TIMING }).toString(); fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body }); } catch (e) {} setSent(true);
     };
     if (sent) return <p className="mt-6 text-center text-sm text-green-400">Thanks — your feedback helps improve the analyzer.</p>;
     return (
@@ -213,7 +215,9 @@ const FeedbackWidget = () => {
                 <div className="mt-3">
                     <p className="text-sm text-cyan-200 mb-2">{rating === 'up' ? 'Glad it helped! What was most useful — or what would make it even better?' : 'Sorry it missed the mark — tell me what was off or what you needed. I read every note.'}</p>
                     <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Type your note here — it goes straight to Dr. Terranella." rows={3} autoFocus className="w-full max-w-md mx-auto block bg-gray-800/70 border border-cyan-600/40 rounded-lg p-3 text-sm text-gray-200" />
-                    <button onClick={submit} className="mt-2 px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg">Send to Dr. T →</button>
+                    <input type="email" value={fbEmail} onChange={(e) => setFbEmail(e.target.value)} placeholder="Your email (optional) — leave it if you’d like a reply when we fix this" className="w-full max-w-md mx-auto block mt-2 bg-gray-800/70 border border-gray-600 rounded-lg p-2 text-sm text-gray-200" />
+                        <p className="text-xs text-gray-500 mt-1">Only used to reply to your note. Never shared.</p>
+                        <button onClick={submit} className="mt-2 px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg">Send to Dr. T →</button>
                 </div>
             )}
         </div>
@@ -514,6 +518,24 @@ const App = () => {
             setError('Please fill in at least Free T, Estradiol, and Hematocrit values.');
             return;
         }
+        {
+            const U0 = formData.units || DEFAULT_UNITS;
+            const warn = [];
+            const tt = parseFloat(formData.labs.totalTestosterone);
+            const ft = parseFloat(formData.labs.freeTestosterone);
+            const e2 = parseFloat(formData.labs.estradiol);
+            const hct = parseFloat(formData.labs.hematocrit);
+            if (U0.totalTestosterone === 'ng/dL' && tt > 0 && tt < 60) warn.push('Total T of ' + tt + ' looks like nmol/L (UK/EU/Canada/Australia), not ng/dL');
+            if (U0.freeTestosterone === 'pg/mL' && ft > 0 && ft < 2) warn.push('Free T of ' + ft + ' looks like nmol/L, not pg/mL');
+            if (U0.freeTestosterone === 'pg/mL' && ft > 150) warn.push('Free T of ' + ft + ' looks like pmol/L, not pg/mL');
+            if (U0.estradiol === 'pg/mL' && e2 > 150) warn.push('Estradiol of ' + e2 + ' may be pmol/L, not pg/mL');
+            if (U0.hematocrit === '%' && hct > 0 && hct < 1) warn.push('Hematocrit of ' + hct + ' looks like L/L (a fraction), not %');
+            if (warn.length) {
+                const proceed = window.confirm('Please double-check your units:\n\n- ' + warn.join('\n- ') + '\n\nUse the unit dropdown next to each value to match your lab report.' + '\n\nOK = continue anyway.  Cancel = go back and fix.');
+                trackEvent(proceed ? 'unit_warning_continued' : 'unit_warning_back', { count: warn.length, ab_variant: AB_CARD_TIMING });
+                if (!proceed) return;
+            }
+        }
         setError('');
         trackEvent('analysis_attempt', { ab_variant: AB_CARD_TIMING });
 
@@ -603,7 +625,8 @@ const App = () => {
                             {currentStep === 2 && (
                                 <div className="animate-slide-up">
                                     <h2 className="text-2xl font-bold text-cyan-400 mb-1">Your Lab Results</h2>
-                                    <p className="text-gray-400 mb-6">Enter your most recent bloodwork values. Pick the units shown on your lab report.</p>
+                                    <p className="text-gray-400 mb-3">Enter your most recent bloodwork values exactly as they appear on your lab report.</p>
+                                    <div className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-200 text-sm rounded-lg p-3 mb-6"><strong>Outside the US?</strong> UK, EU, Canadian and Australian labs usually report in nmol/L and pmol/L. Choose your lab’s unit in the dropdown next to each value and we automatically convert everything to the US scale (ng/dL, pg/mL) before analyzing.</div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
                                         <div>
                                             <div className="flex items-center justify-between mb-2">
