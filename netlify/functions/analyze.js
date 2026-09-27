@@ -336,7 +336,7 @@ ${labLine('Hematocrit', 'hematocrit')}
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ result: response.text }),
+      body: JSON.stringify({ result: response.text, analysesRemaining: Math.max(0, ANALYSIS_CAP - purchase.used - 1) }),
     };
   } catch (error) {
     console.error("Error in Netlify function:", error);
