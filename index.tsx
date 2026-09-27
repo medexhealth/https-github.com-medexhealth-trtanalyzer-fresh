@@ -97,6 +97,7 @@ const analyzeLabResults = async (formData, maxRetries = 3) => {
         }
 
         if (response.status === 402 || response.status === 503) {
+          if (response.status === 402) { try { localStorage.removeItem('analysesRemaining'); } catch (e) {} }
           return `Error: ${errorData.error || 'We could not verify your purchase. Please try again in a moment.'}`;
         }
 
@@ -110,6 +111,7 @@ const analyzeLabResults = async (formData, maxRetries = 3) => {
         return `Error: The analysis service is temporarily unavailable (Status: ${response.status}). Please try again.`;
       }
       const data = await response.json();
+      try { if (typeof data.analysesRemaining === 'number') localStorage.setItem('analysesRemaining', String(data.analysesRemaining)); } catch (e) {}
       if (data.error) {
         return `Error: ${data.error}`;
       }
@@ -257,11 +259,20 @@ const ResultDisplay = ({ result, onReset }) => {
         });
     };
     if (!result) return null;
+    const remaining = (() => { try { const n = parseInt(localStorage.getItem('analysesRemaining') || '', 10); return isNaN(n) ? null : n; } catch (e) { return null; } })();
     return (
         <div className="animate-fade-in">
+            <style>{`@media print { html, body, #root, main, .min-h-screen { background: #fff !important; } .animate-fade-in > :nth-child(n+3), .print-hide { display: none !important; } .animate-fade-in * { color: #000 !important; background: transparent !important; box-shadow: none !important; border-color: #ccc !important; backdrop-filter: none !important; } }`}</style>
             <div className="bg-gray-900/50 backdrop-blur-xl p-6 rounded-lg shadow-2xl border border-cyan-500/20">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
                     <h2 className="text-2xl font-bold text-cyan-400">Analysis Report</h2>
+                    <div className="flex gap-2 print-hide">
+                    <button
+                        onClick={() => { trackEvent('report_print_clicked'); window.print(); }}
+                        className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-800/70 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 hover:text-cyan-200 rounded-lg transition-all duration-200"
+                    >
+                        Print / Save PDF
+                    </button>
                     <button
                         onClick={handleCopy}
                         className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-800/70 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 hover:text-cyan-200 rounded-lg transition-all duration-200 disabled:opacity-50"
@@ -269,13 +280,17 @@ const ResultDisplay = ({ result, onReset }) => {
                     >
                         {copied ? <> <CheckIcon className="w-4 h-4 text-green-400" /> Copied!</> : <> <ClipboardIcon className="w-4 h-4" /> Copy Discussion Guide</>}
                     </button>
+                    </div>
                 </div>
+                <div className="print-hide bg-cyan-500/10 border border-cyan-500/30 text-cyan-200 text-sm rounded-lg p-3 mb-4"><strong>Save this report.</strong> It’s stored only in this browser for 7 days, and starting a new analysis replaces it. Use “Print / Save PDF” to keep a copy for your doctor.</div>
                 <div className="prose prose-invert max-w-none text-gray-300 leading-relaxed space-y-4">
                     <Markdown content={result} />
                 </div>
             </div>
             <FeedbackWidget />
             <div className="mt-6 text-center">
+                {remaining === 1 && <p className="text-sm text-cyan-300 mb-3">You have 1 more analysis included with this purchase (within 7 days). Click “Start New Analysis” to use it.</p>}
+                {remaining === 0 && <p className="text-sm text-gray-400 mb-3">You’ve used both analyses included with this purchase. A new analysis will require a new purchase.</p>}
                 <button
                     onClick={onReset}
                     className="flex items-center justify-center w-full sm:w-auto mx-auto gap-2 px-6 py-3 bg-gray-700/50 border border-gray-600 text-gray-300 hover:bg-gray-600/50 hover:text-white rounded-lg transition-colors duration-200"
@@ -451,7 +466,7 @@ const App = () => {
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const stripeSessionId = urlParams.get('session_id');
-        if (stripeSessionId && stripeSessionId.startsWith('cs_')) { try { localStorage.setItem('paymentRef', stripeSessionId); } catch (e) {} }
+        if (stripeSessionId && stripeSessionId.startsWith('cs_')) { try { localStorage.setItem('paymentRef', stripeSessionId); localStorage.removeItem('analysesRemaining'); } catch (e) {} }
         const storedSessionJSON = localStorage.getItem('analysisSession');
         if (stripeSessionId?.startsWith('cs_') && storedSessionJSON) {
             setAppState('VERIFYING_PAYMENT');
@@ -552,6 +567,22 @@ const App = () => {
             return;
         }
 
+        // Second analysis included with a recent purchase: skip the payment screen.
+        // The server re-verifies the purchase and enforces the 2-analysis cap.
+        {
+            let storedRef = '';
+            let remainingCount = NaN;
+            try { storedRef = localStorage.getItem('paymentRef') || ''; remainingCount = parseInt(localStorage.getItem('analysesRemaining') || '', 10); } catch (e) {}
+            if (storedRef && remainingCount > 0) {
+                const includedSession = { token: crypto.randomUUID(), expiry: Date.now() + 7 * 24 * 60 * 60 * 1000, paymentConfirmed: true, formData: formData };
+                setAnalysisSession(includedSession);
+                localStorage.setItem('analysisSession', JSON.stringify(includedSession));
+                trackEvent('included_analysis_used', { ab_variant: AB_CARD_TIMING });
+                runAnalysis(formData, includedSession);
+                return;
+            }
+        }
+
         const newSession = {
             token: crypto.randomUUID(),
             expiry: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -569,7 +600,7 @@ const App = () => {
                 return (
                     <div className="text-center animate-fade-in">
                         <h1 className="text-4xl sm:text-5xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-blue-500 mb-4">TRT Lab Analyzer</h1>
-                        <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3">Get an AI-powered analysis of your TRT lab results. A one-time payment unlocks your personalized report, designed to help you prepare for a discussion with your doctor. This is not medical advice.</p>
+                        <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3">Get an AI-powered analysis of your TRT lab results. A one-time payment unlocks your personalized report (includes 2 analyses within 7 days), designed to help you prepare for a discussion with your doctor. This is not medical advice.</p>
                         <p className="text-sm text-cyan-300 max-w-xl mx-auto mb-8">Have your most recent testosterone panel handy — you’ll enter your Free T, Estradiol, and Hematocrit values. Takes about 2 minutes.</p>
                         <button onClick={() => {
                             trackEvent('start_analysis_clicked', { ab_variant: AB_CARD_TIMING });
@@ -701,7 +732,8 @@ const App = () => {
                         <div className="bg-gray-900/50 backdrop-blur-xl p-8 rounded-lg shadow-2xl border border-cyan-500/20">
                             <ShieldCheckIcon className="w-16 h-16 mx-auto text-cyan-400 animate-pulse-icon mb-4" />
                             <h2 className="text-2xl font-bold text-cyan-400 mb-2">One-Time Secure Payment</h2>
-                            <p className="text-gray-400 mb-6">{analysisSession && !analysisSession.formData ? "Unlock your personalized analysis for a one-time fee of $16.99. Next, you\u2019ll enter your lab values and symptoms to generate your report." : "Your comprehensive lab analysis is ready. A one-time fee of $16.99 unlocks your personalized report."}</p>
+                            <p className="text-gray-400 mb-2">{analysisSession && !analysisSession.formData ? "Unlock your personalized analysis for a one-time fee of $16.99. Next, you\u2019ll enter your lab values and symptoms to generate your report." : "Your comprehensive lab analysis is ready. A one-time fee of $16.99 unlocks your personalized report."}</p>
+                            <p className="text-sm text-cyan-300 mb-6">Includes 2 analyses within 7 days of purchase.</p>
 
                             {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm text-left">{error}</div>}
                             <a href={PAYMENT_URL_TAGGED} onClick={() => trackEvent('proceed_to_payment', { ab_variant: AB_CARD_TIMING })} className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-500 transition-all duration-300 transform hover:scale-105">
@@ -737,7 +769,7 @@ const App = () => {
                                                         return;
                                                     }
                                                     trackEvent('payment_verified', { paymentId: trimmedCode });
-                                                    try { localStorage.setItem('paymentRef', trimmedCode); } catch (e) {}
+                                                    try { localStorage.setItem('paymentRef', trimmedCode); localStorage.removeItem('analysesRemaining'); } catch (e) {}
                                                     const storedSessionJSON = localStorage.getItem('analysisSession');
                                                     if (storedSessionJSON) {
                                                         try {
