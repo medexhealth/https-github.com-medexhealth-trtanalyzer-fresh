@@ -389,7 +389,7 @@ const App = () => {
     ];
     const [analyzingText, setAnalyzingText] = useState(analyzingMessages[0]);
     const TOTAL_STEPS = 3;
-    const PAYMENT_URL = 'https://buy.stripe.com/5kQ8wQ2rTawTcqFemt2Fa03';
+    const PAYMENT_URL = 'https://buy.stripe.com/cNi5kE6I9bAX2Q5emt2Fa05';
     const PAYMENT_URL_TAGGED = `${PAYMENT_URL}${PAYMENT_URL.includes('?') ? '&' : '?'}client_reference_id=ct_${AB_CARD_TIMING}`;
     const BYPASS_CODES = [
       { code: 'DRTNOV25', expiry: new Date('2026-06-01').getTime() },
@@ -470,7 +470,7 @@ const App = () => {
         const storedSessionJSON = localStorage.getItem('analysisSession');
         if (stripeSessionId?.startsWith('cs_') && storedSessionJSON) {
             setAppState('VERIFYING_PAYMENT');
-            trackEvent('purchase_completed', { stripe_session_id: stripeSessionId, ab_variant: AB_CARD_TIMING, value: 16.99, currency: 'USD' });
+            trackEvent('purchase_completed', { stripe_session_id: stripeSessionId, ab_variant: AB_CARD_TIMING, value: 19.99, currency: 'USD' });
             window.history.replaceState({}, document.title, window.location.pathname);
             try {
                 const session = JSON.parse(storedSessionJSON);
@@ -494,7 +494,7 @@ const App = () => {
         }
         else if (stripeSessionId?.startsWith('cs_')) {
             // Paid on Stripe but no saved session in this browser (different device, incognito, or checkout retry).
-            trackEvent('purchase_completed', { stripe_session_id: stripeSessionId, ab_variant: AB_CARD_TIMING, value: 16.99, currency: 'USD', recovered: 'no_session' });
+            trackEvent('purchase_completed', { stripe_session_id: stripeSessionId, ab_variant: AB_CARD_TIMING, value: 19.99, currency: 'USD', recovered: 'no_session' });
             window.history.replaceState({}, document.title, window.location.pathname);
             const rescueSession = { token: crypto.randomUUID(), expiry: Date.now() + 7 * 24 * 60 * 60 * 1000, paymentConfirmed: true, formData: null };
             localStorage.setItem('analysisSession', JSON.stringify(rescueSession));
@@ -732,7 +732,7 @@ const App = () => {
                         <div className="bg-gray-900/50 backdrop-blur-xl p-8 rounded-lg shadow-2xl border border-cyan-500/20">
                             <ShieldCheckIcon className="w-16 h-16 mx-auto text-cyan-400 animate-pulse-icon mb-4" />
                             <h2 className="text-2xl font-bold text-cyan-400 mb-2">One-Time Secure Payment</h2>
-                            <p className="text-gray-400 mb-2">{analysisSession && !analysisSession.formData ? "Unlock your personalized analysis for a one-time fee of $16.99. Next, you\u2019ll enter your lab values and symptoms to generate your report." : "Your comprehensive lab analysis is ready. A one-time fee of $16.99 unlocks your personalized report."}</p>
+                            <p className="text-gray-400 mb-2">{analysisSession && !analysisSession.formData ? "Unlock your personalized analysis for a one-time fee of $19.99. Next, you\u2019ll enter your lab values and symptoms to generate your report." : "Your comprehensive lab analysis is ready. A one-time fee of $19.99 unlocks your personalized report."}</p>
                             <p className="text-sm text-cyan-300 mb-6">Includes 2 analyses within 7 days of purchase.</p>
 
                             {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm text-left">{error}</div>}
