@@ -374,6 +374,9 @@ const App = () => {
         labs: { totalTestosterone: '', freeTestosterone: '', estradiol: '', hematocrit: '' },
         units: { totalTestosterone: 'ng/dL', freeTestosterone: 'pg/mL', estradiol: 'pg/mL', hematocrit: '%' },
         symptoms: [],
+        weeklyDose: '',
+        e2TestType: '',
+        recentDonation: '',
     });
     const [analysisResult, setAnalysisResult] = useState('');
     const [error, setError] = useState('');
@@ -532,6 +535,7 @@ const App = () => {
     const handleFrequencyChange = (e) => setFormData(prev => ({ ...prev, injectionFrequency: e.target.value }));
     const handleTimingChange = (e) => setFormData(prev => ({ ...prev, bloodTestTiming: e.target.value }));
     const handleSymptomChange = (symptoms) => setFormData(prev => ({ ...prev, symptoms }));
+    const handleField = (name) => (e) => setFormData(prev => ({ ...prev, [name]: e.target.value }));
 
     const handleAttemptAnalysis = () => {
         if (!formData.labs.freeTestosterone || !formData.labs.estradiol || !formData.labs.hematocrit) {
@@ -654,6 +658,10 @@ const App = () => {
                                                 {Object.values(BloodTestTiming).map(time => <option key={time} value={time}>{time}</option>)}
                                             </select>
                                         </div>
+                                        <div>
+                                            <label htmlFor="weeklyDose" className="block text-sm font-medium text-gray-300 mb-2">Total weekly testosterone dose in mg <span className="text-gray-500">(optional)</span></label>
+                                            <input type="number" min="0" id="weeklyDose" value={formData.weeklyDose || ''} onChange={handleField('weeklyDose')} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" placeholder="e.g., 120" />
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -698,6 +706,25 @@ const App = () => {
                                                 </select>
                                             </div>
                                             <input type="number" min="0" name="hematocrit" id="hematocrit" value={formData.labs.hematocrit} onChange={handleLabChange} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition" placeholder="e.g., 48.5" required />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6 mt-6">
+                                        <div>
+                                            <label htmlFor="e2TestType" className="block text-sm font-medium text-gray-300 mb-2">Estradiol test type</label>
+                                            <select id="e2TestType" value={formData.e2TestType || ''} onChange={handleField('e2TestType')} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
+                                                <option value="">Not sure</option>
+                                                <option value="LC/MS (sensitive)">LC/MS (sensitive)</option>
+                                                <option value="Standard immunoassay">Standard</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label htmlFor="recentDonation" className="block text-sm font-medium text-gray-300 mb-2">Blood donation before this test</label>
+                                            <select id="recentDonation" value={formData.recentDonation || ''} onChange={handleField('recentDonation')} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
+                                                <option value="">Select...</option>
+                                                <option value="I don't donate blood">I don't donate blood</option>
+                                                <option value="Donated within 3 weeks before this test">Donated within 3 weeks before this test</option>
+                                                <option value="Donated more than 3 weeks before this test">Donated more than 3 weeks before</option>
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
