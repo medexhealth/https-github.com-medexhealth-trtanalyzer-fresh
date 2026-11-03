@@ -328,13 +328,14 @@ ${labLine('Hematocrit', 'hematocrit')}
     console.log("Sending request to Gemini API...");
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      // gemini-2.5-flash is retired Dec 1, 2026 and auto-redirects to gemini-3.5-flash-lite.
+      // Flash-Lite ignores temperature/topP/topK and uses thinkingLevel instead of thinkingBudget.
+      // GEMINI_MODEL (Netlify env var) can override the model without a code change.
+      model: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
       contents: userPrompt,
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.5,
-        topP: 0.95,
-        topK: 40,
+        thinkingConfig: { thinkingLevel: 'MEDIUM' },
       },
     });
 
