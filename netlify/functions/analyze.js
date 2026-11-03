@@ -18,7 +18,10 @@ const GATE_MESSAGES = {
   unavailable: "We couldn’t reach our payment system to verify your purchase. Please wait a minute and try again. You won’t be charged again."
 };
 
-async function verifyAndReservePurchase(paymentRef) {
+// attemptId: a random ID the app generates once per analysis and re-sends on automatic retries.
+// If the same attemptId was already counted (e.g. the first try timed out after being counted),
+// the retry is NOT counted again. This stops one slow analysis from using up both runs.
+async function verifyAndReservePurchase(paymentRef, attemptId) {
   const ref = typeof paymentRef === "string" ? paymentRef.trim() : "";
   if (!/^(cs|pi)_[A-Za-z0-9_]+$/.test(ref)) return { ok: false, status: 402, reason: "missing" };
   const key = process.env.STRIPE_SECRET_KEY;
@@ -49,8 +52,15 @@ async function verifyAndReservePurchase(paymentRef) {
     if (kind === "pi" && target.status !== "succeeded") return { ok: false, status: 402, reason: "unpaid" };
     if (Date.now() - target.created * 1000 > PURCHASE_WINDOW_MS) return { ok: false, status: 402, reason: "expired" };
     const used = parseInt((target.metadata && target.metadata.analyses_used) || "0", 10) || 0;
+    const aid = typeof attemptId === "string" && /^[A-Za-z0-9-]{8,64}$/.test(attemptId) ? attemptId : "";
+    const lastAttempt = (target.metadata && target.metadata.last_attempt) || "";
+    if (aid && used > 0 && lastAttempt === aid) {
+      // Retry of an attempt that was already counted: let it through without counting again.
+      console.log("Retry of already-counted attempt; not counting again.");
+      return { ok: true, stripe, kind, id: target.id, used: used - 1, retry: true };
+    }
     if (used >= ANALYSIS_CAP) return { ok: false, status: 402, reason: "cap" };
-    const meta = { metadata: { analyses_used: String(used + 1) } };
+    const meta = { metadata: { analyses_used: String(used + 1), last_attempt: aid } };
     if (kind === "pi") await stripe.paymentIntents.update(target.id, meta);
     else await stripe.checkout.sessions.update(target.id, meta);
     return { ok: true, stripe, kind, id: target.id, used };
@@ -63,7 +73,7 @@ async function verifyAndReservePurchase(paymentRef) {
 
 // Gives the analysis back if the AI step fails after a purchase was counted.
 async function releaseReservation(p) {
-  if (!p || !p.ok || !p.stripe) return;
+  if (!p || !p.ok || !p.stripe || p.retry) return;
   try {
     const meta = { metadata: { analyses_used: String(p.used) } };
     if (p.kind === "pi") await p.stripe.paymentIntents.update(p.id, meta);
@@ -102,8 +112,8 @@ export const handler = async (event) => {
   }
 
   try {
-    const { formData, units, displayLabs, paymentRef } = JSON.parse(event.body);
-    var purchase = await verifyAndReservePurchase(paymentRef);
+    const { formData, units, displayLabs, paymentRef, attemptId } = JSON.parse(event.body);
+    var purchase = await verifyAndReservePurchase(paymentRef, attemptId);
     if (!purchase.ok) {
       console.log("Purchase verification declined:", purchase.reason);
       return {
