@@ -386,9 +386,9 @@ const App = () => {
     const analyzingMessages = [
       'Correlating hematocrit with your injection frequency...',
       'Analyzing estradiol levels against reported symptoms...',
-      'Consulting clinical patterns from Dr. T\'s training data...',
+      'Applying Dr. Terranella\'s published TRT framework...',
       'Cross-referencing biomarkers with your current protocol...',
-      'Formatting your Personalized Doctor Discussion Guide...',
+      'Writing your questions for your prescriber...',
       'Still working on your analysis, please hold tight...',
       'Almost there, finalizing your personalized report...'
     ];
