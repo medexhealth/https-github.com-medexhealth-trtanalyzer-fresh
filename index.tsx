@@ -72,6 +72,8 @@ const trackEvent = (eventName, properties = {}) => {
 };
 // --- SECURE ANALYSIS SERVICE ---
 const analyzeLabResults = async (formData, maxRetries = 3) => {
+  // One ID per analysis, re-sent on automatic retries so the server never counts a retry as a second analysis.
+  const attemptId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2, 10);
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`[Analysis] Attempt ${attempt} of ${maxRetries}...`);
@@ -80,7 +82,7 @@ const analyzeLabResults = async (formData, maxRetries = 3) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ...buildAnalysisPayload(formData), paymentRef: (() => { try { return localStorage.getItem('paymentRef') || ''; } catch (e) { return ''; } })() }),
+        body: JSON.stringify({ ...buildAnalysisPayload(formData), attemptId, paymentRef: (() => { try { return localStorage.getItem('paymentRef') || ''; } catch (e) { return ''; } })() }),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -384,9 +386,9 @@ const App = () => {
     const analyzingMessages = [
       'Correlating hematocrit with your injection frequency...',
       'Analyzing estradiol levels against reported symptoms...',
-      'Consulting clinical patterns from Dr. T\'s training data...',
+      'Applying Dr. Terranella\'s published TRT framework...',
       'Cross-referencing biomarkers with your current protocol...',
-      'Formatting your Personalized Doctor Discussion Guide...',
+      'Writing your questions for your prescriber...',
       'Still working on your analysis, please hold tight...',
       'Almost there, finalizing your personalized report...'
     ];
