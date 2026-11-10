@@ -236,7 +236,8 @@ const ResultDisplay = ({ result, onReset }) => {
     const handleCopy = () => {
         const guideTitle = "### Doctor Discussion Guide";
         const disclaimerTitle = "### Important Disclaimer";
-        const startIndex = result.indexOf(guideTitle);
+        const newGuideTitle = "### Questions for Your Prescriber";
+        const startIndex = result.indexOf(newGuideTitle) !== -1 ? result.indexOf(newGuideTitle) : result.indexOf(guideTitle);
 
         if (startIndex === -1) {
             console.error("Could not find the discussion guide section to copy.");
