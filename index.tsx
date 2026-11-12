@@ -13,6 +13,7 @@ const CyclePhase = {
   DAYS_6_13: 'Days 6-13 (follicular phase)',
   DAYS_14_16: 'Days 14-16 (around ovulation - T peak)',
   DAYS_17_28: 'Days 17-28 (luteal phase)',
+  NO_PERIOD: 'No period for 2+ months',
   UNSURE: 'Unsure',
 };
 const TherapyType = {
@@ -292,6 +293,8 @@ const App = () => {
   const [formData, setFormData] = useState({
     lifeStage: '',
     cyclePhase: '',
+    cycleDay: '',
+    cycleLength: '',
     currentTTherapy: '',
     tDoseAndDuration: '',
     drawTiming: '',
@@ -472,8 +475,8 @@ const App = () => {
       if (field === 'currentTTherapy' && value !== prev.currentTTherapy) {
         next.drawTiming = '';
       }
-      if (field === 'lifeStage' && value !== LifeStage.PREMENOPAUSAL) {
-        next.cyclePhase = '';
+      if (field === 'lifeStage' && value !== LifeStage.PREMENOPAUSAL && value !== LifeStage.PERIMENOPAUSAL) {
+        next.cyclePhase = ''; next.cycleDay = ''; next.cycleLength = '';
       }
       return next;
     });
@@ -510,7 +513,7 @@ const App = () => {
   };
 
   const availableTimingOptions = TimingOptionsByMethod[formData.currentTTherapy] || [];
-  const showCycleQuestion = formData.lifeStage === LifeStage.PREMENOPAUSAL;
+  const showCycleQuestion = formData.lifeStage === LifeStage.PREMENOPAUSAL || formData.lifeStage === LifeStage.PERIMENOPAUSAL;
   const showTherapyDetails = formData.currentTTherapy && formData.currentTTherapy !== TherapyType.NONE;
 
   const renderContent = () => {
@@ -549,9 +552,20 @@ const App = () => {
 
                     {showCycleQuestion && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Cycle timing when your blood was drawn</label>
-                        <select value={formData.cyclePhase} onChange={(e) => handleFieldChange('cyclePhase', e.target.value)} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
-                          <option value="">Choose one...</option>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Cycle day when your blood was drawn</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <input type="number" min="1" max="90" inputMode="numeric" placeholder="e.g. 19" value={formData.cycleDay} onChange={(e) => handleFieldChange('cycleDay', e.target.value)} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" />
+                            <p className="text-xs text-gray-500 mt-1">Day 1 = the first day of your last period.</p>
+                          </div>
+                          <div>
+                            <input type="number" min="15" max="90" inputMode="numeric" placeholder="e.g. 28" value={formData.cycleLength} onChange={(e) => handleFieldChange('cycleLength', e.target.value)} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" />
+                            <p className="text-xs text-gray-500 mt-1">Your usual cycle length in days (leave blank if irregular).</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-2">Testosterone and estradiol change across the cycle, so the same number can mean different things on different days. Not sure of the day? Pick the closest phase:</p>
+                        <select value={formData.cyclePhase} onChange={(e) => handleFieldChange('cyclePhase', e.target.value)} className="w-full mt-2 bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                          <option value="">Phase (only if you don't know the day)...</option>
                           {Object.values(CyclePhase).map(phase => <option key={phase} value={phase}>{phase}</option>)}
                         </select>
                       </div>
