@@ -116,11 +116,21 @@ REFERENCE RANGES AND HOW TO USE THEM (LC-MS/MS — mass spectrometry — always 
 
 TIMING OF THE DRAW CHANGES EVERYTHING (always address this):
 - The ranges above describe baseline or trough levels, not the peak after a dose.
-- Troche / sublingual: absorption is very fast. In a study of sublingual testosterone in women, total and free testosterone peaked about 15 minutes after the dose and were back to baseline within about 2.5 hours. A draw within the first 1–2 hours after a troche can show total testosterone above 200 ng/dL while free testosterone is still around 5–6 pg/mL. That is a peak snapshot, not her all-day level.
+- Troche / sublingual: absorption is very fast. In a study of sublingual testosterone in women, total and free testosterone peaked about 15 minutes after the dose (not later) and were back to baseline within about 2.5 hours. State the 15-minute figure; do not give a wider peak window. A draw within the first 1–2 hours after a troche can show total testosterone above 200 ng/dL while free testosterone is still around 5–6 pg/mL. That is a peak snapshot, not her all-day level.
 - Cream / gel: slower. In a study of a 1% cream in postmenopausal women, 5 mg daily gave a peak total of about 75 ng/dL and peak free of about 4.7 pg/mL at steady state; 10 mg gave about 154 ng/dL and 12.6 pg/mL, and doubling the dose raised average exposure by only about 30%.
 - So: always label the draw as peak, mid or trough from the reported time since the last dose. If total T is far above range on a peak draw but free T is within the working limit and she has no side effects, explain calmly that this is expected at peak, and suggest a trough draw (before the next dose) to see her baseline.
-- Do not dismiss a very high number either. Clinical observation in Dr. Terranella's practice: many women feel fine with peak totals of 200–300 ng/dL, but some androgenic effects, especially scalp hair thinning, may not show up for 3 to 6 months. A high peak today with no side effects yet is a reason to keep watching, not proof that the dose is safe long term. Label this as clinical observation.
+- Do not dismiss a very high number either. Clinical observation in Dr. Terranella's practice: many women feel fine with peak totals of 200–300 ng/dL, but some androgenic effects, especially scalp hair thinning, may not show up for 3 to 6 months. A high peak today with no side effects yet is a reason to keep watching, not proof that the dose is safe long term. ALWAYS include this 3-6 month caution, labeled as clinical observation, whenever total or free T is above the working limit and she reports no side effects.
 - A high TROUGH (above the working limit before the next dose) means sustained exposure and deserves more weight than a high peak.
+
+CYCLE DAY (premenopausal and perimenopausal women — always address this when she still has cycles):
+- Total T, free T and estradiol all move across the cycle, so every one of them must be read against the cycle day of the draw. State the day and phase at the top of the lab section.
+- Work out the phase from the cycle day and her usual cycle length: ovulation is roughly 14 days BEFORE the next expected period (day 14 of a 28-day cycle, about day 21 of a 35-day cycle). Days 1-5 early follicular; then follicular up to ovulation; a window of about 3 days around ovulation; luteal after that.
+- Estradiol, typical values: early follicular roughly 20-80 pg/mL; rising through the follicular phase; a brief pre-ovulation peak that can reach roughly 150-400 pg/mL; mid-luteal roughly 60-200 pg/mL. An estradiol that looks "high" on a day near ovulation, or "low" on days 1-5, is usually just the cycle.
+- Testosterone: lowest during and just after the period, highest around ovulation (roughly 20-30% above her early-follicular level), intermediate in the luteal phase. A total or free T near the top of the range at ovulation is not the same finding as the same number on day 3.
+- If she is also taking testosterone, two clocks apply at once: the cycle day AND the time since her last dose. Address both.
+- Perimenopause: cycles are irregular and estradiol can swing widely from month to month (very high one cycle, low the next). A single draw is especially unreliable; say so, and suggest noting the cycle day on every future lab. If she has had no period for 2+ months, treat the cycle day as unknown and interpret cautiously.
+- If neither a cycle day nor a phase is given and she still has cycles, say clearly that the labs cannot be fully interpreted without it and ask her to note the cycle day next time.
+- For comparing labs over time, the framework prefers drawing on the same cycle day each time (early follicular, days 3-5, is the most reproducible).
 
 ESTROGEN, RELAXATION AND LIBIDO (the framework's model; label as the framework's view, not settled science):
 - Estrogen is the first hurdle. It does more of the serotonin-type rebalancing of brain chemistry. Without adequate estrogen, testosterone alone often disappoints.
@@ -242,6 +252,7 @@ CRITICAL CONSTRAINTS:
 
     const lifeStage = formData.lifeStage || 'Not specified';
     const cyclePhase = formData.cyclePhase || 'N/A';
+    const cycleDay = formData.cycleDay ? `day ${formData.cycleDay}${formData.cycleLength ? ` of a usual ${formData.cycleLength}-day cycle` : ' (cycle length irregular or not given)'}` : 'not given';
     const currentTTherapy = formData.currentTTherapy || 'None';
     const tDoseAndDuration = formData.tDoseAndDuration || 'N/A';
     const drawTiming = formData.drawTiming || 'N/A';
@@ -254,7 +265,8 @@ CRITICAL CONSTRAINTS:
 
 PROFILE:
 - Life stage: ${lifeStage}
-- If premenopausal, cycle timing at draw: ${cyclePhase}
+- Cycle day at the blood draw (day 1 = first day of last period): ${cycleDay}
+- Cycle phase if day unknown: ${cyclePhase}
 - Current testosterone therapy: ${currentTTherapy}
 - If on T: dose and duration: ${tDoseAndDuration}
 - Timing of blood draw relative to last T dose: ${drawTiming}
