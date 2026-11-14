@@ -27,7 +27,10 @@ const EstrogenTherapy = {
   NONE: 'None',
   VAGINAL: 'Vaginal only (local)',
   TRANSDERMAL: 'Transdermal (patch, gel, cream)',
-  ORAL: 'Oral (pill)',
+  TROCHE: 'Troche / sublingual (dissolved in the mouth)',
+  ORAL: 'Oral (swallowed pill)',
+  PELLET: 'Pellet',
+  INJECTION: 'Injection',
 };
 const PrimaryGoal = {
   LIBIDO: 'Low libido / sexual desire',
@@ -36,16 +39,27 @@ const PrimaryGoal = {
   BODY: 'Muscle / bone / body composition',
   NOT_MYSELF: "Overall - I don't feel like myself",
 };
+const GoalProgress = {
+  NOT_STARTED: "I haven't started testosterone yet",
+  NONE: 'No improvement yet',
+  SOME: 'Some improvement, but not where I want to be',
+  MOST: 'Most of the way there',
+  THERE: "I'm where I want to be (checking that I'm not overdoing it)",
+  WORSE: 'It got better, then slipped back',
+  SIDE: 'Goal is improving, but I have side effects',
+};
 const TimingOptionsByMethod = {
   [TherapyType.CREAM]: [
     'Within 2-6 hours after application (peak)',
-    '6-12 hours after application (mid)',
-    '12+ hours after application (trough)',
+    '6-12 hours after application (later the same day)',
+    'Next morning, before the next application (about 24 hours)',
   ],
   [TherapyType.TROCHE]: [
-    'Within 2-6 hours after dose (peak)',
-    '6-12 hours after dose (mid)',
-    '12+ hours after dose (trough)',
+    'Within 1 hour after dose (peak)',
+    '1-3 hours after dose (coming down from peak)',
+    '3-6 hours after dose',
+    '6-12 hours after dose (later the same day)',
+    'Next morning, before the next dose (about 24 hours)',
   ],
   [TherapyType.INJECTION]: [
     '1-2 days after injection (peak)',
@@ -308,6 +322,7 @@ const App = () => {
       progesterone: '',
     },
     primaryGoal: '',
+    goalProgress: '',
     symptoms: [],
     androgenicRisk: {
       acne: 'None',
@@ -422,6 +437,9 @@ const App = () => {
           runAnalysis(updatedSession.formData, updatedSession);
           return;
         }
+        // A report already exists for this session (or it expired): show it instead of hanging on "Verifying Payment".
+        if (session.result) { setAnalysisSession(session); setFormData(session.formData); setAnalysisResult(session.result); setAppState('RESULT'); }
+        else { localStorage.removeItem('analysisSession'); setAppState('FORM'); }
       } catch (e) {
         console.error("Error handling payment redirect:", e);
         setAppState('AWAITING_PAYMENT');
@@ -663,6 +681,14 @@ const App = () => {
                     <select value={formData.primaryGoal} onChange={(e) => handleFieldChange('primaryGoal', e.target.value)} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
                       <option value="">Choose one...</option>
                       {Object.values(PrimaryGoal).map(goal => <option key={goal} value={goal}>{goal}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">How close are you to that goal right now?</label>
+                    <select value={formData.goalProgress} onChange={(e) => handleFieldChange('goalProgress', e.target.value)} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                      <option value="">Choose one...</option>
+                      {Object.values(GoalProgress).map(g => <option key={g} value={g}>{g}</option>)}
                     </select>
                   </div>
 
