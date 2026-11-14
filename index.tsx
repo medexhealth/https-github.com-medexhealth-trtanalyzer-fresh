@@ -380,6 +380,8 @@ const App = () => {
         weeklyDose: '',
         e2TestType: '',
         recentDonation: '',
+        primaryGoal: '',
+        goalProgress: '',
     });
     const [analysisResult, setAnalysisResult] = useState('');
     const [error, setError] = useState('');
@@ -737,6 +739,33 @@ const App = () => {
                                     <h2 className="text-2xl font-bold text-cyan-400 mb-1">Your Symptoms</h2>
                                     <p className="text-gray-400 mb-6">Select any symptoms you're currently experiencing.</p>
                                     <SymptomsSelector selectedSymptoms={formData.symptoms} onChange={handleSymptomChange} />
+                                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="primaryGoal" className="block text-sm font-medium text-gray-300 mb-2">Your main goal <span className="text-gray-500">(optional)</span></label>
+                                            <select id="primaryGoal" value={formData.primaryGoal || ''} onChange={handleField('primaryGoal')} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
+                                                <option value="">Choose one...</option>
+                                                <option value="Energy / drive / motivation">Energy / drive / motivation</option>
+                                                <option value="Libido / erections">Libido / erections</option>
+                                                <option value="Mood / focus / mental clarity">Mood / focus / mental clarity</option>
+                                                <option value="Muscle / body composition">Muscle / body composition</option>
+                                                <option value="Fewer side effects (anxiety, sleep, hematocrit, estradiol)">Fewer side effects (anxiety, sleep, hematocrit, estradiol)</option>
+                                                <option value="I feel good - checking I'm on the right dose">I feel good - checking I'm on the right dose</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label htmlFor="goalProgress" className="block text-sm font-medium text-gray-300 mb-2">How close are you to that goal? <span className="text-gray-500">(optional)</span></label>
+                                            <select id="goalProgress" value={formData.goalProgress || ''} onChange={handleField('goalProgress')} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
+                                                <option value="">Choose one...</option>
+                                                <option value="I haven't started TRT yet">I haven't started TRT yet</option>
+                                                <option value="No improvement yet">No improvement yet</option>
+                                                <option value="Some improvement, but not where I want to be">Some improvement, but not where I want to be</option>
+                                                <option value="Most of the way there">Most of the way there</option>
+                                                <option value="I'm where I want to be (checking I'm not overdoing it)">I'm where I want to be (checking I'm not overdoing it)</option>
+                                                <option value="It got better, then slipped back">It got better, then slipped back</option>
+                                                <option value="Goal is improving, but I have side effects">Goal is improving, but I have side effects</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                             <div className="flex justify-between mt-8">
