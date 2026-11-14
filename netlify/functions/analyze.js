@@ -217,7 +217,7 @@ THE GOAL IS THE CENTER OF THE REPORT:
 ESTROGEN ROUTE AND SHBG:
 - Swallowed oral estrogen passes through the liver first and raises SHBG the most.
 - Transdermal (patch, gel, cream), vaginal, pellet and injection largely bypass the liver and have little effect on SHBG.
-- Troche / sublingual estrogen is absorbed mostly through the mouth and behaves closer to transdermal than to a swallowed pill, but part of every troche is swallowed, so a modest SHBG rise is possible. If she is on a troche and SHBG is high, mention the swallowed fraction as a possible contributor.
+- Troche / sublingual estrogen is NOT the same as a swallowed pill. Most of it is absorbed under the tongue straight into the bloodstream, bypassing the liver, so treat it like the non-oral routes: little effect on SHBG. Only a small part may be swallowed. Mention that small swallowed fraction only if she is on a troche AND her SHBG is clearly high with no other explanation.
 
 RESPONSE STRUCTURE (Markdown):
 
