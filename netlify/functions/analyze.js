@@ -252,8 +252,18 @@ PSA MONITORING:
 - Concerning: >1 ng/mL jump or stays elevated after 6 months
 - Requires urological evaluation if concerning
 
+USING THE USER'S GOAL (only when a Main Goal is provided; if both goal fields are "Not provided", skip this entirely and do not add the goal section):
+- The user came with one question: "Am I on the right track for MY goal, and how do I get the most out of this without side effects?" Answer that first and keep tying the lab and symptom comments back to it.
+- Read progress against time and steady state: libido often starts to respond in about 3-6 weeks, energy and mood build over weeks to a few months. "No improvement yet" early on is different from "no improvement" after months at a steady dose. Do not encourage an early dose increase.
+- "Where I want to be": the job is to check he is not overdoing it (peak levels, estradiol, hematocrit, delayed overstimulation) and what to keep watching.
+- "Got better, then slipped back" or "improving but with side effects": think of the storage-tank shift from "just plain tired" to "wired and tired", estradiol balance, and frequency before dose.
+- "Fewer side effects": center the report on which marker or pattern is most likely driving the side effect.
+
 RESPONSE STRUCTURE:
 Analyze the provided protocol, labs, and symptoms with emphasis on finding their optimal sweet spot. Structure your response in Markdown with these sections:
+
+### Your Goal: Where You Stand
+ONLY if a Main Goal was provided: place this section right after the italic AI line and before "At a Glance". In 3-5 sentences, restate his goal and reported progress, say what in his numbers, timing and symptoms most likely explains that progress, and name the one or two things most worth discussing to get closer without side effects. If no goal was provided, leave this section out completely.
 
 ### At a Glance
 Start with this exact italic line: "*AI-generated educational summary based on Dr. Robin Terranella's published TRT framework. Not written or reviewed by a clinician.*" Then ONE bold, confident sentence naming the pattern (e.g., "**Your numbers and symptoms closely match the 'too much' (wired and tired) pattern in Dr. Terranella's framework.**"). Use "closely match" when labs and symptoms agree, "partly match" when they are mixed. Then a short bullet list, MOST IMPORTANT FIRST, one line per key marker you have data for, each line starting with a status emoji. Keep the wording soft and non-alarming — this is educational, not a diagnosis:
@@ -345,6 +355,8 @@ ${labLine('Hematocrit', 'hematocrit')}
 - Weekly Dose: ${formData.weeklyDose ? formData.weeklyDose + ' mg/week' : 'Not provided'}
 - Estradiol Test Type: ${formData.e2TestType || 'Not provided'}
 - Blood Donation Timing: ${formData.recentDonation || 'Not provided'}
+- Main Goal: ${formData.primaryGoal || 'Not provided'}
+- How Close to That Goal: ${formData.goalProgress || 'Not provided'}
 - Current Symptoms: ${formData.symptoms.join(', ')}${unitInstruction}`;
 
     console.log("Sending request to Gemini API...");
