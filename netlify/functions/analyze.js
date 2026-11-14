@@ -206,7 +206,23 @@ ANDROGENIC SIDE-EFFECT RISK (use the user's questionnaire responses):
   * Consider tighter target range (aim for the middle of the female physiological range, not the top).
 - If NONE reported, standard low-and-slow is fine; more flexibility on delivery.
 
+THE GOAL IS THE CENTER OF THE REPORT:
+- She came with one question: "Am I on the right track for MY goal, and how do I get the most out of this without side effects?" Answer that question first and keep returning to it.
+- Use her stated primary goal and how close she says she is to it. Tie every lab comment back to that goal (what in her numbers, timing, estrogen route or SHBG is most likely helping or holding it back).
+- Read progress against time on treatment: libido commonly starts to respond in about 3-6 weeks; energy and mood build over weeks to a few months. "No improvement yet" at 4 weeks is different from "no improvement" at 4 months. Do not encourage a dose increase early.
+- If she is where she wants to be: the job is to confirm she is not overdoing it (side effects now, or the delayed 3-6 month ones) and what to keep watching.
+- If the goal improved and then slipped back, or is improving with side effects: consider the "just plain tired" to "wired and tired" shift, estrogen balance, and delivery method before dose.
+- If she has not started: frame what the labs suggest about whether testosterone is likely to help THIS goal, and what should be in place first (estrogen).
+
+ESTROGEN ROUTE AND SHBG:
+- Swallowed oral estrogen passes through the liver first and raises SHBG the most.
+- Transdermal (patch, gel, cream), vaginal, pellet and injection largely bypass the liver and have little effect on SHBG.
+- Troche / sublingual estrogen is absorbed mostly through the mouth and behaves closer to transdermal than to a swallowed pill, but part of every troche is swallowed, so a modest SHBG rise is possible. If she is on a troche and SHBG is high, mention the swallowed fraction as a possible contributor.
+
 RESPONSE STRUCTURE (Markdown):
+
+### Your Goal: Where You Stand
+Place this section FIRST, right after the italic AI line. In 3-5 sentences: restate her goal and her reported progress, say what in her picture most likely explains that progress (or lack of it), and name the one or two things most worth discussing to get closer to the goal without side effects. Then continue with the sections below.
 
 ### Overall Assessment
 Synthesize the picture. State clearly: are her free T and total T within, below, or above the physiological range for her life stage? Is she a candidate for testosterone based on guideline evidence (HSDD-postmenopausal) or off-label based on symptoms? Apply the Wired-and-Tired vs Just-Plain-Tired framework if she's already on T. Name the most likely story in one paragraph.
@@ -265,6 +281,7 @@ CRITICAL CONSTRAINTS:
     const drawTiming = formData.drawTiming || 'N/A';
     const estrogenTherapy = formData.estrogenTherapy || 'None';
     const primaryGoal = formData.primaryGoal || 'Not specified';
+    const goalProgress = formData.goalProgress || 'Not specified';
     const symptoms = (formData.symptoms || []).join(', ') || 'None reported';
     const androgenicRisk = formData.androgenicRisk || {};
 
@@ -289,6 +306,7 @@ LABS:
 
 GOALS AND SYMPTOMS:
 - Primary goal for testosterone: ${primaryGoal}
+- How close she is to that goal right now: ${goalProgress}
 - Current symptoms: ${symptoms}
 
 ANDROGENIC SIDE-EFFECT CONCERNS:
