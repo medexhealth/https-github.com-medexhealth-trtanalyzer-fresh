@@ -738,8 +738,8 @@ const App = () => {
                                 <div className="animate-slide-up">
                                     <h2 className="text-2xl font-bold text-cyan-400 mb-1">Your Symptoms</h2>
                                     <p className="text-gray-400 mb-6">Select any symptoms you're currently experiencing.</p>
-                                    <SymptomsSelector selectedSymptoms={formData.symptoms} onChange={handleSymptomChange} />
-                                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <p className="text-sm text-cyan-300 mb-2">Optional, but it makes your report about <b>your</b> goal:</p>
+                                    <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg border border-cyan-700/50 bg-cyan-900/10">
                                         <div>
                                             <label htmlFor="primaryGoal" className="block text-sm font-medium text-gray-300 mb-2">Your main goal <span className="text-gray-500">(optional)</span></label>
                                             <select id="primaryGoal" value={formData.primaryGoal || ''} onChange={handleField('primaryGoal')} className="w-full bg-gray-800/70 border border-gray-700 text-white rounded-lg p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition">
@@ -766,6 +766,7 @@ const App = () => {
                                             </select>
                                         </div>
                                     </div>
+                                    <SymptomsSelector selectedSymptoms={formData.symptoms} onChange={handleSymptomChange} />
                                 </div>
                             )}
                             <div className="flex justify-between mt-8">
