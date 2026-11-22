@@ -7,6 +7,8 @@ import Stripe from "stripe";
 // stored on the Stripe payment itself (metadata.analyses_used). If Stripe
 // cannot be reached, the request is refused and the user is asked to retry.
 const ANALYSIS_CAP = 2;
+// Purchases made through the women's analyzer payment link can't unlock this (men's) analyzer.
+const BLOCKED_PAYMENT_LINKS = ["plink_1Uc5cyK3gjNDDAA8l33Oj4E6"];
 const PURCHASE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 const GATE_MESSAGES = {
@@ -15,6 +17,7 @@ const GATE_MESSAGES = {
   unpaid: "This payment hasn’t completed yet. Please finish checkout to run your analysis.",
   expired: "This purchase is more than 7 days old. Please purchase a new analysis.",
   cap: "You’ve used both analyses included with this purchase. Your report is still saved in this browser. To analyze a new set of labs, please purchase again.",
+  otherproduct: "That purchase was for a different analyzer. Please purchase the TRT Lab Analyzer to run this report, or email info@swintegrativemedicine.com.",
   unavailable: "We couldn’t reach our payment system to verify your purchase. Please wait a minute and try again. You won’t be charged again."
 };
 
@@ -35,6 +38,7 @@ async function verifyAndReservePurchase(paymentRef, attemptId) {
     let kind;
     if (ref.startsWith("cs_")) {
       const session = await stripe.checkout.sessions.retrieve(ref, { expand: ["payment_intent"] });
+      if (BLOCKED_PAYMENT_LINKS.includes(session.payment_link)) return { ok: false, status: 402, reason: "otherproduct" };
       if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") {
         return { ok: false, status: 402, reason: "unpaid" };
       }
@@ -47,6 +51,8 @@ async function verifyAndReservePurchase(paymentRef, attemptId) {
       }
     } else {
       target = await stripe.paymentIntents.retrieve(ref);
+      const linked = await stripe.checkout.sessions.list({ payment_intent: ref, limit: 1 });
+      if (linked && linked.data && linked.data[0] && BLOCKED_PAYMENT_LINKS.includes(linked.data[0].payment_link)) return { ok: false, status: 402, reason: "otherproduct" };
       kind = "pi";
     }
     if (kind === "pi" && target.status !== "succeeded") return { ok: false, status: 402, reason: "unpaid" };
