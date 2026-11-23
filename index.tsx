@@ -67,7 +67,7 @@ const trackEvent = (eventName, properties = {}) => {
   console.log(`[Analytics] Event: ${eventName}`, properties);
   // Send to Google Analytics 4 (gtag loaded above). No-op if gtag isn't present.
   if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
-    (window as any).gtag('event', eventName, properties);
+    (window as any).gtag('event', eventName, { ...properties, ab_price: AB_PRICE });
   }
 };
 // --- SECURE ANALYSIS SERVICE ---
@@ -365,6 +365,37 @@ const AB_CARD_TIMING = (() => {
     return 'A'; // Variant A (pay-second) locked in as winner — was a 50/50 A/B split
   } catch (e) { return 'A'; }
 })();
+// --- PAYMENT SCREEN: trust + personal preview (pay-screen test) ---
+const DR_PHOTO_URL = ''; // paste a photo URL here to show Dr. T's photo on the payment screen
+const YOUTUBE_URL = ''; // paste the YouTube channel URL here
+// Price-display A/B test: 'A' = price only on the payment screen (current), 'B' = price also shown on the intro.
+// 50/50, remembered per browser; ?pv=A or ?pv=B forces a variant for previewing.
+const AB_PRICE = (() => {
+  try {
+    const p = new URLSearchParams(window.location.search).get('pv');
+    if (p === 'A' || p === 'B') return p;
+    let v = localStorage.getItem('ab_price');
+    if (v !== 'A' && v !== 'B') { v = Math.random() < 0.5 ? 'A' : 'B'; localStorage.setItem('ab_price', v); }
+    return v;
+  } catch (e) { return 'A'; }
+})();
+const timingWord = (t) => !t ? '' : /^Peak/.test(t) ? 'peak' : /^Mid/.test(t) ? 'mid-cycle' : /^Trough/.test(t) ? 'trough' : '';
+const payPreviewItems = (fd) => {
+  const items = [];
+  const L = (fd && fd.labs) || {};
+  const U = (fd && fd.units) || DEFAULT_UNITS;
+  const tw = timingWord(fd && fd.bloodTestTiming);
+  if (L.freeTestosterone) items.push('Your Free T of ' + L.freeTestosterone + ' ' + U.freeTestosterone + (tw ? ', read for a ' + tw + ' draw' : ', read for when your blood was drawn'));
+  const extra = [];
+  if (L.estradiol) extra.push('estradiol of ' + L.estradiol + ' ' + U.estradiol);
+  if (L.hematocrit) extra.push('hematocrit of ' + L.hematocrit + (U.hematocrit === '%' ? '%' : ' ' + U.hematocrit));
+  if (extra.length) items.push('Your ' + extra.join(' and ') + ', and what they mean together');
+  const n = (fd && fd.symptoms && fd.symptoms.length) || 0;
+  items.push(n ? 'Which pattern your ' + n + ' symptom' + (n === 1 ? ' fits' : 's fit') + ' in Dr. Terranella’s framework' : 'Which pattern your numbers fit in Dr. Terranella’s framework');
+  if (fd && fd.primaryGoal) items.push('Where you stand on your goal: ' + String(fd.primaryGoal).toLowerCase());
+  items.push('4–5 questions to bring to your prescriber');
+  return items;
+};
 // --- MAIN APP COMPONENT ---
 const App = () => {
     const [appState, setAppState] = useState('INTRO');
@@ -386,6 +417,7 @@ const App = () => {
     const [analysisResult, setAnalysisResult] = useState('');
     const [error, setError] = useState('');
     const [bypassCode, setBypassCode] = useState('');
+    const [showPaid, setShowPaid] = useState(false);
     const analyzingMessages = [
       'Correlating hematocrit with your injection frequency...',
       'Analyzing estradiol levels against reported symptoms...',
@@ -398,12 +430,8 @@ const App = () => {
     const [analyzingText, setAnalyzingText] = useState(analyzingMessages[0]);
     const TOTAL_STEPS = 3;
     const PAYMENT_URL = 'https://buy.stripe.com/cNi5kE6I9bAX2Q5emt2Fa05';
-    const PAYMENT_URL_TAGGED = `${PAYMENT_URL}${PAYMENT_URL.includes('?') ? '&' : '?'}client_reference_id=ct_${AB_CARD_TIMING}`;
-    const BYPASS_CODES = [
-      { code: 'DRTNOV25', expiry: new Date('2026-06-01').getTime() },
-      { code: 'DRTCOMP', expiry: new Date('2026-06-01').getTime() },
-      { code: 'DRTREVIEW', expiry: new Date('2027-12-31').getTime() },
-    ];
+    const PAYMENT_URL_TAGGED = `${PAYMENT_URL}${PAYMENT_URL.includes('?') ? '&' : '?'}client_reference_id=ct_${AB_CARD_TIMING}_pv${AB_PRICE}`;
+    const BYPASS_CODES = []; // old access codes expired and were removed; codes are now Stripe promo codes
     const endSessionAndReset = useCallback(() => {
         localStorage.removeItem('analysisSession');
         setAnalysisSession(null);
@@ -610,6 +638,7 @@ const App = () => {
                     <div className="text-center animate-fade-in">
                         <h1 className="text-4xl sm:text-5xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-blue-500 mb-4">TRT Lab Analyzer</h1>
                         <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-3">Get an AI-powered analysis of your TRT lab results. A one-time payment unlocks your personalized report (includes 2 analyses within 7 days), designed to help you prepare for a discussion with your doctor. This is not medical advice.</p>
+                        {AB_PRICE === 'B' && <p className="text-base font-semibold text-white mb-3">$19.99 one-time &middot; includes 2 analyses within 7 days</p>}
                         <p className="text-sm text-cyan-300 max-w-xl mx-auto mb-8">Have your most recent testosterone panel handy — you’ll enter your Free T, Estradiol, and Hematocrit values. Takes about 2 minutes.</p>
                         <button onClick={() => {
                             trackEvent('start_analysis_clicked', { ab_variant: AB_CARD_TIMING });
@@ -791,15 +820,35 @@ const App = () => {
                     <div className="w-full max-w-lg mx-auto animate-fade-in text-center">
                         <div className="bg-gray-900/50 backdrop-blur-xl p-8 rounded-lg shadow-2xl border border-cyan-500/20">
                             <ShieldCheckIcon className="w-16 h-16 mx-auto text-cyan-400 animate-pulse-icon mb-4" />
-                            <h2 className="text-2xl font-bold text-cyan-400 mb-2">One-Time Secure Payment</h2>
-                            <p className="text-gray-400 mb-2">{analysisSession && !analysisSession.formData ? "Unlock your personalized analysis for a one-time fee of $19.99. Next, you\u2019ll enter your lab values and symptoms to generate your report." : "Your comprehensive lab analysis is ready. A one-time fee of $19.99 unlocks your personalized report."}</p>
+                            <h2 className="text-2xl font-bold text-cyan-400 mb-3">{analysisSession && !analysisSession.formData ? "Unlock your personalized analysis" : "Your personalized report is one step away"}</h2>
+                            {analysisSession && analysisSession.formData ? (
+                                <div className="text-left bg-gray-800/40 border border-gray-700/60 rounded-lg p-4 mb-4">
+                                    <p className="text-sm font-semibold text-gray-200 mb-2">Your report will cover:</p>
+                                    <ul className="text-sm text-gray-300 space-y-1.5 list-disc pl-5">
+                                        {payPreviewItems(analysisSession.formData).map((t, i) => <li key={i}>{t}</li>)}
+                                    </ul>
+                                </div>
+                            ) : (
+                                <p className="text-gray-400 mb-4">Next, you&rsquo;ll enter your lab values and symptoms to generate your report.</p>
+                            )}
+                            <p className="text-white text-lg font-bold mb-1">$19.99 one-time</p>
                             <p className="text-sm text-cyan-300 mb-6">Includes 2 analyses within 7 days of purchase.</p>
 
                             {error && <div className="bg-red-500/20 text-red-300 border border-red-500/50 p-3 rounded-lg mb-6 text-sm text-left">{error}</div>}
                             <a href={PAYMENT_URL_TAGGED} onClick={() => trackEvent('proceed_to_payment', { ab_variant: AB_CARD_TIMING })} className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-500 transition-all duration-300 transform hover:scale-105">
                                 <CreditCardIcon className="w-6 h-6" /> Pay Now & Get Report
                             </a>
-                            <div className="mt-6 pt-6 border-t border-gray-700/50">
+                            <div className="mt-5 flex items-center justify-center gap-3">
+                                {DR_PHOTO_URL ? <img src={DR_PHOTO_URL} alt="Dr. Robin Terranella" className="w-12 h-12 rounded-full object-cover border border-cyan-500/40" /> : null}
+                                <p className="text-sm text-gray-300 text-left">Built on <span className="font-semibold text-white">Dr. Robin Terranella&rsquo;s</span> TRT framework{YOUTUBE_URL ? <> &mdash; the same approach he teaches on <a href={YOUTUBE_URL} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">YouTube</a></> : null}.</p>
+                            </div>
+                            <ul className="mt-4 text-xs text-gray-400 space-y-1">
+                                <li>&#10003; No account needed</li>
+                                <li>&#10003; Your labs aren&rsquo;t saved on our servers; your report stays in your browser</li>
+                                <li>&#10003; Problem with your report? Email <a href="mailto:info@swintegrativemedicine.com" className="text-cyan-400 hover:underline">info@swintegrativemedicine.com</a></li>
+                            </ul>
+                            {!showPaid && !error && <button type="button" onClick={() => setShowPaid(true)} className="mt-5 text-xs text-gray-500 hover:text-gray-300 underline">Already paid?</button>}
+                            <div className={showPaid || error ? "mt-6 pt-6 border-t border-gray-700/50" : "hidden"}>
                                 <p className="text-sm text-gray-400 mb-3">Already paid? Enter your access code or Stripe payment ID:</p>
                                 <div className="flex gap-2">
                                     <input
