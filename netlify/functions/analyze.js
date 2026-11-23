@@ -90,6 +90,36 @@ function withAiLine(text) {
   return AI_LINE + "\n\n" + body;
 }
 
+const TIME_ON_DOSE_ITEM = '**"Have I been on this exact dose long enough (at least 6 weeks) to judge it, or should we give it more time and recheck before changing anything?"**\n  *What the framework generally says:* A dose needs about 6 weeks to reach a steady state, and longer for tissue effects. Judging or changing it sooner can be misleading, so the framework generally gives the current dose enough time before a small step up is considered.';
+// If any prescriber question leans toward raising the dose, make sure the time-on-dose question comes first.
+function enforceDoseOrder(text) {
+  let t = String(text || "").replace(/\bThe most logical next step\b/g, "One thing worth discussing").replace(/\b(?:is )?the most logical next step\b/gi, "is worth discussing").replace(/\bconfirms that\b/g, "suggests that").replace(/\bconfirms\b/g, "supports");
+  const h = "### Questions for Your Prescriber";
+  const i = t.indexOf(h);
+  if (i < 0) return t;
+  const start = i + h.length;
+  const nx = t.indexOf("\n### ", start);
+  const end = nx < 0 ? t.length : nx;
+  const lines = t.slice(start, end).split("\n");
+  const isStart = l => /^\s*(?:[-*]|\d+\.)\s+\*\*/.test(l) || /^\s*(?:[-*]|\d+\.)\s+"/.test(l);
+  const pre = []; const items = [];
+  for (const l of lines) { if (isStart(l)) items.push([l]); else if (items.length) items[items.length - 1].push(l); else pre.push(l); }
+  if (!items.length) return t;
+  const first = it => it[0];
+  const incRe = /\b(increase|step up|step-up|raise|raising|higher dose|upward|bump)\b/i;
+  const timeRe = /(long enough|steady state|how long have|more time|at least 6 weeks|six weeks)/i;
+  if (!items.some(it => incRe.test(first(it)) && !timeRe.test(first(it)))) return t;
+  const k = items.findIndex(it => timeRe.test(first(it)));
+  if (k === 0) return t;
+  const numbered = /^\s*\d+\./.test(items[0][0]);
+  let ordered;
+  if (k > 0) { ordered = [items[k], ...items.filter((_, j) => j !== k)]; }
+  else { ordered = [["- " + TIME_ON_DOSE_ITEM, ""], ...items]; }
+  ordered = ordered.map((it, n) => { const c = it.slice(); c[0] = c[0].replace(/^\s*(?:[-*]|\d+\.)\s+/, numbered ? (n + 1) + ". " : "- "); if (c[c.length - 1].trim() !== "") c.push(""); return c; });
+  const body = pre.join("\n") + (pre.length ? "\n" : "") + ordered.map(it => it.join("\n")).join("\n");
+  return t.slice(0, start) + body.replace(/\n+$/, "\n") + t.slice(end);
+}
+
 export const handler = async (event) => {
   // Add detailed logging for diagnostics
   console.log("--- 'analyze' function handler invoked ---");
@@ -410,7 +440,7 @@ ${labLine('Hematocrit', 'hematocrit')}
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ result: withAiLine(response.text), analysesRemaining: Math.max(0, ANALYSIS_CAP - purchase.used - 1) }),
+      body: JSON.stringify({ result: withAiLine(enforceDoseOrder(response.text)), analysesRemaining: Math.max(0, ANALYSIS_CAP - purchase.used - 1) }),
     };
   } catch (error) {
     console.error("Error in Netlify function:", error);
