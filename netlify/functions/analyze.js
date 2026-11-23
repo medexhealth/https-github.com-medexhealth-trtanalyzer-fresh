@@ -83,6 +83,13 @@ async function releaseReservation(p) {
   }
 }
 
+const AI_LINE = "*AI-generated educational summary based on Dr. Robin Terranella's published TRT framework. Not written or reviewed by a clinician.*";
+// Guarantees the AI disclosure is the first line exactly once, whatever the model does.
+function withAiLine(text) {
+  const body = String(text || "").split("\n").filter(l => !/^\s*\*?AI-generated educational summary/i.test(l)).join("\n").replace(/^\s+/, "");
+  return AI_LINE + "\n\n" + body;
+}
+
 export const handler = async (event) => {
   // Add detailed logging for diagnostics
   console.log("--- 'analyze' function handler invoked ---");
@@ -145,7 +152,13 @@ CORE DOSING FRAMEWORK:
 - Lower doses (80mg): Older men, cardiovascular/anxiety concerns (individualized)
 - Higher doses (200mg): Younger men, very low baseline (individualized)
 - Injection frequency: Twice weekly preferred for stable levels, reduced aromatization
-- Individual variation: COMT genetic variation (enzyme "funnel" concept) explains why same dose affects people differently
+- Individual variation: COMT genetic variation (enzyme "funnel" concept) explains why the same dose affects people differently. Be precise about what COMT does: it breaks down catecholamines (dopamine, epinephrine, norepinephrine) and catechol estrogens. Testosterone enhances dopamine and possibly adrenaline signaling, so slower COMT can make the adrenergic "wired" response (anxiety, poor sleep, palpitations) stronger, and COMT also affects how estradiol is cleared. NEVER say COMT clears or metabolizes testosterone itself, and never use COMT to explain low testosterone levels or argue for a higher dose.
+
+BEFORE SUGGESTING ANY DOSE INCREASE:
+- The form does not say how long the user has been on the current dose. Before any question that leans toward raising the dose, first ask whether he has been on this exact dose long enough to reach steady state (at least 6 weeks, and longer for tissue effects). If not, the framework generally says to give the current dose time and recheck before changing it. Never present a dose increase as the obvious next step.
+
+WORDING:
+- Describe draw timing only with these exact terms: "peak", "mid-cycle" or "trough". Never invent other terms (for example, never write "mid-chain").
 
 FREE TESTOSTERONE INTERPRETATION:
 - Target range: 100-200 pg/mL (varies by age, symptoms, individual response). A bit above 200 can be fine if the patient feels well, but no one should need more than about 240 pg/mL to feel good. Above ~240 pg/mL, treat it as likely more than this person needs, especially with "too much" symptoms.
@@ -181,7 +194,7 @@ HEMATOCRIT MANAGEMENT:
 - Keep below 52-54% (can go up to 54% especially in younger demographics)
 - A high or rising hematocrit is best read as a sign that total testosterone exposure may be more than this person needs, and it is worth managing.
 - Clot risk (keep the tone calm and factual; never give a personal risk percentage): testosterone products carry a blood clot warning, and a large 2023 trial in men with existing heart disease found slightly more pulmonary embolisms on testosterone than placebo (about 0.9% vs 0.5%), even though doses were reduced when hematocrit reached 54%. It is not proven that hematocrit itself causes clots or that lowering it prevents them. Be more cautious if the patient mentions prior blood clots, heart disease, or stroke. If they describe one-sided leg swelling or pain, chest pain, or sudden shortness of breath, tell them to seek medical care promptly.
-- Single readings can mislead: dehydration and diuretics raise it, and a blood donation within about 3 weeks before the draw means the reading does not reflect their usual level. Use the reported donation timing; if they donated within 3 weeks, interpret cautiously and suggest a well-hydrated retest at least 3 weeks after donating. Compare to previous readings when mentioned.
+- Single readings can mislead: dehydration and diuretics raise it, and a blood donation within about 3 weeks before the draw means the reading does not reflect their usual level. Use the reported donation timing; if they donated within 3 weeks, interpret cautiously and suggest a well-hydrated retest at least 3 weeks after donating. In that case the framework's FIRST step is to get an accurate reading (the recheck) before changing anything. Only if hematocrit is still elevated on the recheck does the framework consider a very mild dose reduction, evaluated over 6 months or more, to see whether hematocrit comes down (hematocrit moves slowly). Frame this as what the framework generally says, for the user to evaluate with their provider, never as an instruction. Compare to previous readings when mentioned.
 - What drives it: total weekly dose and the size of the peaks (total androgen exposure) matter most. Splitting the dose into more frequent injections does NOT reliably lower hematocrit (the data are thin and some show the opposite), and it should never become a reason to raise the weekly dose. Frequency is mainly a tool for estradiol and stability.
 - Other drivers add up on the same pathway (EPO): sleep apnea (the easiest to confirm; suggest a sleep study if hematocrit is climbing and they snore, have witnessed pauses in breathing, or wake unrefreshed, not only above 54%), metabolic health (extra weight, elevated A1C or glucose, insulin resistance, elevated hs-CRP), and smaller factors (starting hematocrit, altitude, smoking, age). TRT can worsen sleep apnea in some men, especially in the first 6 months.
 - Timeline: hematocrit moves on a 6-12 month clock (red cells live 3-4 months and the marrow adapts slowly). No change 8-12 weeks after a dose reduction does NOT mean the reduction failed.
@@ -395,7 +408,7 @@ ${labLine('Hematocrit', 'hematocrit')}
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ result: response.text, analysesRemaining: Math.max(0, ANALYSIS_CAP - purchase.used - 1) }),
+      body: JSON.stringify({ result: withAiLine(response.text), analysesRemaining: Math.max(0, ANALYSIS_CAP - purchase.used - 1) }),
     };
   } catch (error) {
     console.error("Error in Netlify function:", error);
