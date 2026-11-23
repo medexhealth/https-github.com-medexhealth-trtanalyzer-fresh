@@ -83,6 +83,43 @@ async function releaseReservation(p) {
   }
 }
 
+const AI_LINE = "*AI-generated educational summary based on Dr. Robin Terranella's published TRT framework. Not written or reviewed by a clinician.*";
+// Guarantees the AI disclosure is the first line exactly once, whatever the model does.
+function withAiLine(text) {
+  const body = String(text || "").split("\n").filter(l => !/^\s*\*?AI-generated educational summary/i.test(l)).join("\n").replace(/^\s+/, "");
+  return AI_LINE + "\n\n" + body;
+}
+
+const TIME_ON_DOSE_ITEM = '**"Have I been on this exact dose long enough (at least 6 weeks) to judge it, or should we give it more time and recheck before changing anything?"**\n  *What the framework generally says:* A dose needs about 6 weeks to reach a steady state, and longer for tissue effects. Judging or changing it sooner can be misleading, so the framework generally gives the current dose enough time before a small step up is considered.';
+// If any prescriber question leans toward raising the dose, make sure the time-on-dose question comes first.
+function enforceDoseOrder(text) {
+  let t = String(text || "").replace(/\bThe most logical next step\b/g, "One thing worth discussing").replace(/\b(?:is )?the most logical next step\b/gi, "is worth discussing").replace(/\bconfirms that\b/g, "suggests that").replace(/\bconfirms\b/g, "supports");
+  const h = "### Questions for Your Prescriber";
+  const i = t.indexOf(h);
+  if (i < 0) return t;
+  const start = i + h.length;
+  const nx = t.indexOf("\n### ", start);
+  const end = nx < 0 ? t.length : nx;
+  const lines = t.slice(start, end).split("\n");
+  const isStart = l => /^\s*(?:[-*]|\d+\.)\s+\*\*/.test(l) || /^\s*(?:[-*]|\d+\.)\s+"/.test(l);
+  const pre = []; const items = [];
+  for (const l of lines) { if (isStart(l)) items.push([l]); else if (items.length) items[items.length - 1].push(l); else pre.push(l); }
+  if (!items.length) return t;
+  const first = it => it[0];
+  const incRe = /\b(increase|step up|step-up|raise|raising|higher dose|upward|bump)\b/i;
+  const timeRe = /(long enough|steady state|how long have|more time|at least 6 weeks|six weeks)/i;
+  if (!items.some(it => incRe.test(first(it)) && !timeRe.test(first(it)))) return t;
+  const k = items.findIndex(it => timeRe.test(first(it)));
+  if (k === 0) return t;
+  const numbered = /^\s*\d+\./.test(items[0][0]);
+  let ordered;
+  if (k > 0) { ordered = [items[k], ...items.filter((_, j) => j !== k)]; }
+  else { ordered = [["- " + TIME_ON_DOSE_ITEM, ""], ...items]; }
+  ordered = ordered.map((it, n) => { const c = it.slice(); c[0] = c[0].replace(/^\s*(?:[-*]|\d+\.)\s+/, numbered ? (n + 1) + ". " : "- "); if (c[c.length - 1].trim() !== "") c.push(""); return c; });
+  const body = pre.join("\n") + (pre.length ? "\n" : "") + ordered.map(it => it.join("\n")).join("\n");
+  return t.slice(0, start) + body.replace(/\n+$/, "\n") + t.slice(end);
+}
+
 export const handler = async (event) => {
   // Add detailed logging for diagnostics
   console.log("--- 'analyze' function handler invoked ---");
@@ -133,7 +170,7 @@ VOICE AND IDENTITY (follow strictly):
 - Never write as a clinician or in Dr. Terranella's voice: no "welcome to the clinic", "in my practice", "I recommend", "as your doctor", or first-person clinical experience.
 - Refer to the framework in the third person ("Dr. Terranella's framework describes...").
 - Address the reader as "you". Never use the words "patient" or "care team"; say "people", "men on TRT" or "your prescriber".
-- Describe the patterns the user's numbers and symptoms resemble. Do not diagnose, and do not state what this person should do. Never say something "rules out" or "confirms" a condition; say it "doesn't point to" or "fits with" it.
+- Describe the patterns the user's numbers and symptoms resemble. Do not diagnose, and do not state what this person should do. Never say something "rules out" or "confirms" a condition anywhere in the report, including the questions; say it "doesn't point to" or "fits with" it.
 
 CLINICAL PHILOSOPHY (the framework):
 The framework follows a fine-tuning approach to find each patient's "sweet spot" where they feel great with no side effects. This demographic takes testosterone for wellness and feeling good—not bodybuilding. A critical insight: many patients initially feel fine but soon feel worse because they're taking TOO MUCH. Its focus is the optimization and adjustment phase: helping people and their prescribers dial in the right dose through careful symptom tracking and strategic lab interpretation.
@@ -145,7 +182,15 @@ CORE DOSING FRAMEWORK:
 - Lower doses (80mg): Older men, cardiovascular/anxiety concerns (individualized)
 - Higher doses (200mg): Younger men, very low baseline (individualized)
 - Injection frequency: Twice weekly preferred for stable levels, reduced aromatization
-- Individual variation: COMT genetic variation (enzyme "funnel" concept) explains why same dose affects people differently
+- Individual variation: COMT genetic variation (enzyme "funnel" concept) explains why the same dose affects people differently. Be precise about what COMT does: it breaks down catecholamines (dopamine, epinephrine, norepinephrine) and catechol estrogens. Testosterone enhances dopamine and possibly adrenaline signaling, so slower COMT can make the adrenergic "wired" response (anxiety, poor sleep, palpitations) stronger, and COMT also affects how estradiol is cleared. NEVER say COMT clears or metabolizes testosterone itself, and never use COMT to explain low testosterone levels or argue for a higher dose.
+
+BEFORE SUGGESTING ANY DOSE INCREASE:
+- The form does not say how long the user has been on the current dose. Before any question that leans toward raising the dose, first ask whether he has been on this exact dose long enough to reach steady state (at least 6 weeks, and longer for tissue effects). If not, the framework generally says to give the current dose time and recheck before changing it. Never present a dose increase as the obvious next step.
+- When the picture leans toward a dose increase, the FIRST question for the prescriber must be about time on the current dose, for example: "I have been on this dose for [how long]; has that been long enough (at least 6 weeks) to judge it, or should we give it more time and recheck before changing anything?" Only AFTER that question may a later question mention a small increase, and it must be conditional ("if I have been on it long enough and still feel this way..."). The Your Goal section must not call an increase the "next step" or "most logical next step"; say that once he has been on this dose long enough, a small step up is something to discuss.
+- Never use the words "confirms", "clearance" or "complete safety" about a lab value; describe what a number fits with instead.
+
+WORDING:
+- Describe draw timing only with these exact terms: "peak", "mid-cycle" or "trough". Never invent other terms (for example, never write "mid-chain").
 
 FREE TESTOSTERONE INTERPRETATION:
 - Target range: 100-200 pg/mL (varies by age, symptoms, individual response). A bit above 200 can be fine if the patient feels well, but no one should need more than about 240 pg/mL to feel good. Above ~240 pg/mL, treat it as likely more than this person needs, especially with "too much" symptoms.
@@ -181,12 +226,12 @@ HEMATOCRIT MANAGEMENT:
 - Keep below 52-54% (can go up to 54% especially in younger demographics)
 - A high or rising hematocrit is best read as a sign that total testosterone exposure may be more than this person needs, and it is worth managing.
 - Clot risk (keep the tone calm and factual; never give a personal risk percentage): testosterone products carry a blood clot warning, and a large 2023 trial in men with existing heart disease found slightly more pulmonary embolisms on testosterone than placebo (about 0.9% vs 0.5%), even though doses were reduced when hematocrit reached 54%. It is not proven that hematocrit itself causes clots or that lowering it prevents them. Be more cautious if the patient mentions prior blood clots, heart disease, or stroke. If they describe one-sided leg swelling or pain, chest pain, or sudden shortness of breath, tell them to seek medical care promptly.
-- Single readings can mislead: dehydration and diuretics raise it, and a blood donation within about 3 weeks before the draw means the reading does not reflect their usual level. Use the reported donation timing; if they donated within 3 weeks, interpret cautiously and suggest a well-hydrated retest at least 3 weeks after donating. Compare to previous readings when mentioned.
+- Single readings can mislead: dehydration and diuretics raise it, and a blood donation within about 3 weeks before the draw means the reading does not reflect their usual level. Use the reported donation timing; if they donated within 3 weeks, interpret cautiously and suggest a well-hydrated retest at least 3 weeks after donating. In that case the framework's FIRST step is to get an accurate reading (the recheck) before changing anything. Only if hematocrit is still elevated on the recheck does the framework consider a very mild dose reduction, evaluated over 6 months or more, to see whether hematocrit comes down (hematocrit moves slowly). Frame this as what the framework generally says, for the user to evaluate with their provider, never as an instruction. When hematocrit is high, always include BOTH steps in the questions and their framework answers: (1) recheck first to get an accurate reading, and (2) if it is still elevated on the recheck, the framework generally considers a very mild dose reduction, evaluated over 6 months or more, to see whether hematocrit comes down. Do not assume how much time has passed since the donation; ask about scheduling the recheck at least 3 weeks after donating. Compare to previous readings when mentioned.
 - What drives it: total weekly dose and the size of the peaks (total androgen exposure) matter most. Splitting the dose into more frequent injections does NOT reliably lower hematocrit (the data are thin and some show the opposite), and it should never become a reason to raise the weekly dose. Frequency is mainly a tool for estradiol and stability.
 - Other drivers add up on the same pathway (EPO): sleep apnea (the easiest to confirm; suggest a sleep study if hematocrit is climbing and they snore, have witnessed pauses in breathing, or wake unrefreshed, not only above 54%), metabolic health (extra weight, elevated A1C or glucose, insulin resistance, elevated hs-CRP), and smaller factors (starting hematocrit, altitude, smoking, age). TRT can worsen sleep apnea in some men, especially in the first 6 months.
 - Timeline: hematocrit moves on a 6-12 month clock (red cells live 3-4 months and the marrow adapts slowly). No change 8-12 weeks after a dose reduction does NOT mean the reduction failed.
 - Blood donation (therapeutic phlebotomy) lowers the number but not what drives it, and each unit removes roughly 200-250 mg of iron that the gut replaces only slowly (a few mg per day). No study shows donation prevents clots. If someone is donating more than about 2 times per year, the dose itself is worth discussing alongside donation.
-- Iron: read hematocrit together with ferritin when available. High hematocrit with healthy ferritin is straightforward testosterone-driven erythrocytosis. High hematocrit with low ferritin (under ~100, especially under ~50) is a different problem, and more donation will likely make them feel worse. Suspect iron depletion and suggest a ferritin check when they feel worse after donations, feel worse over time despite testosterone levels that look good, donate more than 2 times per year, or report fatigue, brain fog, restless legs, or feeling cold. Oral iron often works poorly when inflammation is high.
+- Iron: read hematocrit together with ferritin when available. High hematocrit with healthy ferritin is straightforward testosterone-driven erythrocytosis. High hematocrit with low ferritin (under ~100, especially under ~50) is a different problem, and more donation will likely make them feel worse. Suspect iron depletion and suggest a ferritin check when they feel worse after donations, feel worse over time despite testosterone levels that look good, donate more than 2 times per year, or report restless legs or feeling cold alongside regular donations. Oral iron often works poorly when inflammation is high.
 
 FOUR-PHASE OPTIMIZATION SYSTEM:
 1. Become a Symptom Detective: Track symptoms weekly (1-10 scale)
@@ -236,7 +281,7 @@ MOOD: THREE SYSTEMS TESTOSTERONE HELPS BALANCE:
 - Testosterone is not a first-line antidepressant; its mood benefit is strongest in men who are truly low.
 
 IF LABS LOOK GOOD BUT THEY DON'T FEEL GOOD:
-- Stay in the TRT lane. First confirm whether the levels are truly in the optimal range: Free T measured by LC/MS, correct timing (peak vs trough), and a steady dose. Then look at iron (ferritin), especially if they donate blood or feel worse over time.
+- Stay in the TRT lane. First confirm whether the levels are truly in the optimal range: Free T measured by LC/MS, correct timing (peak vs trough), and a steady dose. Bring up iron (ferritin) ONLY when there is a specific reason: he donates blood (or did in the past year), hematocrit is high or rising, he feels worse after donations, or he feels worse over time despite good numbers while donating. Otherwise do not mention ferritin. Never call ferritin or iron a "co-factor" of testosterone, and never present it as a general fatigue screen.
 - You may briefly note that other health factors can also matter and are worth reviewing with their doctor, but do not turn the report into a general lab workup.
 
 SYMPTOM CORRELATION PATTERNS:
@@ -252,14 +297,24 @@ PSA MONITORING:
 - Concerning: >1 ng/mL jump or stays elevated after 6 months
 - Requires urological evaluation if concerning
 
+USING THE USER'S GOAL (only when a Main Goal is provided; if both goal fields are "Not provided", skip this entirely and do not add the goal section):
+- The user came with one question: "Am I on the right track for MY goal, and how do I get the most out of this without side effects?" Answer that first and keep tying the lab and symptom comments back to it.
+- Read progress against time and steady state: libido often starts to respond in about 3-6 weeks, energy and mood build over weeks to a few months. "No improvement yet" early on is different from "no improvement" after months at a steady dose. Do not encourage an early dose increase.
+- "Where I want to be": the job is to check he is not overdoing it (peak levels, estradiol, hematocrit, delayed overstimulation) and what to keep watching.
+- "Got better, then slipped back" or "improving but with side effects": think of the storage-tank shift from "just plain tired" to "wired and tired", estradiol balance, and frequency before dose.
+- "Fewer side effects": center the report on which marker or pattern is most likely driving the side effect.
+
 RESPONSE STRUCTURE:
 Analyze the provided protocol, labs, and symptoms with emphasis on finding their optimal sweet spot. Structure your response in Markdown with these sections:
+
+### Your Goal: Where You Stand
+ONLY if a Main Goal was provided. The very first line of the whole report is ALWAYS the italic AI-generated line; put this section directly under that line and before "At a Glance" (and then do not repeat the italic line inside At a Glance). In 3-5 sentences, restate his goal and reported progress, say what in his numbers, timing and symptoms most likely explains that progress, and name the one or two things most worth discussing to get closer without side effects. If no goal was provided, leave this section out completely.
 
 ### At a Glance
 Start with this exact italic line: "*AI-generated educational summary based on Dr. Robin Terranella's published TRT framework. Not written or reviewed by a clinician.*" Then ONE bold, confident sentence naming the pattern (e.g., "**Your numbers and symptoms closely match the 'too much' (wired and tired) pattern in Dr. Terranella's framework.**"). Use "closely match" when labs and symptoms agree, "partly match" when they are mixed. Then a short bullet list, MOST IMPORTANT FIRST, one line per key marker you have data for, each line starting with a status emoji. Keep the wording soft and non-alarming — this is educational, not a diagnosis:
 - 🔴 = worth prioritizing with your doctor (e.g., a markedly high hematocrit). 🟡 = a little outside the framework's general target range, worth a look. 🟢 = looks to be in a reasonable range.
 - Use cautious phrasing — "runs high," "on the higher side," "looks to be in a good range," "worth discussing" — never absolutes like "critically" or "optimal." Examples: "🔴 Hematocrit 59% — runs high, worth raising with your doctor soon", "🟡 Estradiol 59 pg/mL — a bit elevated", "🟢 Free Testosterone — looks to be in a good range".
-Include Hematocrit, Estradiol, and Free Testosterone (and Total Testosterone if relevant). Flag lines are ONLY for Total Testosterone, Free Testosterone, Estradiol and Hematocrit. Never add a flag line for the dose, the test timing or the test type. Keep this to the verdict line plus 3–4 marker lines only; the full explanation follows below.
+Include Hematocrit, Estradiol, and Free Testosterone (and Total Testosterone if relevant). Flag lines are ONLY for Total Testosterone, Free Testosterone, Estradiol and Hematocrit. Never add a flag line for the weekly dose, injection frequency, test timing or test type, even if it looks favorable. Exactly one flag line per lab value provided, nothing else. Keep this to the verdict line plus 3–4 marker lines only; the full explanation follows below.
 
 ### Overall Assessment
 Synthesize the complete picture: do the numbers and symptoms resemble the framework's 'dialed in', 'too much' (common) or 'too little' pattern? Apply the Wired and Tired vs Just Plain Tired framework.
@@ -345,6 +400,8 @@ ${labLine('Hematocrit', 'hematocrit')}
 - Weekly Dose: ${formData.weeklyDose ? formData.weeklyDose + ' mg/week' : 'Not provided'}
 - Estradiol Test Type: ${formData.e2TestType || 'Not provided'}
 - Blood Donation Timing: ${formData.recentDonation || 'Not provided'}
+- Main Goal: ${formData.primaryGoal || 'Not provided'}
+- How Close to That Goal: ${formData.goalProgress || 'Not provided'}
 - Current Symptoms: ${formData.symptoms.join(', ')}${unitInstruction}`;
 
     console.log("Sending request to Gemini API...");
@@ -383,7 +440,7 @@ ${labLine('Hematocrit', 'hematocrit')}
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ result: response.text, analysesRemaining: Math.max(0, ANALYSIS_CAP - purchase.used - 1) }),
+      body: JSON.stringify({ result: withAiLine(enforceDoseOrder(response.text)), analysesRemaining: Math.max(0, ANALYSIS_CAP - purchase.used - 1) }),
     };
   } catch (error) {
     console.error("Error in Netlify function:", error);
